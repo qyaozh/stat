@@ -1,0 +1,171 @@
+---
+title: "无序分类结果变量的回归"
+subtitle: "Regression on unordered categorical outcomes"
+draft: true
+---
+
+在读本文之前，请先读《二分结果变量的回归》一文。
+
+```{r}
+#| label: "packages"
+#| message: false
+library(tidyverse)
+library(Keng)
+library(MASS)
+library(nnet)
+```
+
+```{r}
+#| label: "options"
+#| include: false
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "##"
+)
+```
+
+## 数据与案例
+
+`Keng`程序包中包含数据`depress`，我们将`depress`中的变量*依恋回避*`attach_avo`与*依恋焦虑*`attach_anx`按照得分高低进行两两组合，将被试划入四种依恋风格`style`：安全型，回避型，焦虑型，恐惧型。`style`是一个无序分类变量，它的四个类别之间没有顺序差异。我们的问题是：我们是否可以使用问题定向应对方式`cope_task1`预测被试的依恋风格`style`？
+
+```{r}
+data("depress")
+depress <- depress |> 
+  mutate(
+    zattach_avo = Scale(attach_avo, sd = 1),
+    zattach_anx = Scale(attach_anx, sd = 1),
+    style = case_when(
+      (zattach_avo <= 0) & (zattach_anx <= 0) ~ "secure",
+      (zattach_avo > 0) & (zattach_anx <= 0) ~ "attach_avoidant",
+      (zattach_avo <= 0) & (zattach_anx > 0) ~ "attach_anxious",
+      (zattach_avo > 0) & (zattach_anx > 0) ~ "fearful"
+    )
+  )
+head(depress$style)
+table(depress$style)
+prop.table(table(depress$style))
+```
+
+## 无序分类结果变量的logistic回归
+
+对于二分结果变量Y的logistic回归，logistic回归方程的结果变量是$Y^*$，(Y = 1)的概率为
+：
+
+$$
+\begin{align}
+P(Y = 1| X) &= F(Y^*)\\
+&= F(logit)\\
+&= \frac {1}{1 + e^{-1 \cdot (b0 + b1 \cdot X)}}\\
+&= \frac {e^{b0 + b1 \cdot X}}{1 + e^{b0 + b1 \cdot X}}
+\end{align}
+$$
+
+无序分类结果变量的逻辑回归同样也是二分结果变量逻辑回归的拓展。要点有二：
+
+1. 在二分结果变量的二项逻辑回归中，logit反映了两个类别之间的对比。在无序分类结果变量的逻辑回归中，多项logistic回归一般默认最后一个类别k为参照组，将其他类别与最后一个类别作对比，总计进行k-1次对比，需要用k-1个logistic回归方程。对于Y的类别c的回归方程为$Y_c = b0 + b1 \cdot X$。参照组的b0与b1被设定为0，换言之，参照组的回归方程是已知的，不需要估计。
+
+2. 分类变量Y有k个类别，对于某个类别c，其概率为：
+
+$$P(Y = c|X) = F(Y^*) = F(logit) =  \frac {e^{b0 + b1 \cdot X}}{\sum_i^k e^{b0 + b1 \cdot X}}$$
+
+注意分母的变化。根据上式将Y的所有类别的P的公式写出并相加，P的和为1。
+
+如何解释$b0 + b1 \cdot X$的含义？根据上面的公式，P(Y=c|X)为，
+
+$$P(Y=c|X) = \frac {e^{b_0 + b_1 \cdot X}}{\sum_i^k e^{b_{0k} + b_{1k} \cdot X}}$$
+参照组的概率P(Y=k|X)为，
+
+$$P(Y=k|X) = \frac {e^{0 + 0 \cdot X}}{\sum_i^k e^{b_{0k} + b_{1k} \cdot X}} = \frac {1}{\sum_i^k e^{b_{0k} + b_{1k} \cdot X}}$$
+那么，P(Y=c|X)与P(Y=k|X)的odds为，
+
+$$\frac{P(Y=c|X)}{P(Y=k|X)} = e^{logit} = \frac{e^{b0 + b1 \cdot X}}{e^{0+0 \cdot X}} = e^{b0 + b1 \cdot X}$$
+
+那么logit为，
+
+$$log(\frac{P(Y=c|X)}{P(Y=k|X)}) = logit = b0 + b1 \cdot X$$
+
+即，$logit = b0 + b1 \cdot X$反映了Y=c相对于Y=k的概率。对于b0与b1的解释可参考二项逻辑回归对b0与b1的解释。
+
+## 案例演示
+
+我们使用`cope_task1`预测`style`：
+
+```{r}
+fit.nom <- multinom(style ~ cope_task1, depress)
+summary(fit.nom)
+confint(fit.nom)
+```
+
+可见，上述结果中没有`attach_anxious`，即上述分析以`attach_anxious`为参照组。以`secure`为例，`secure`组的回归方程为$Y_{secure} = 1.821685 - 0.2719101*cope_task1$，但截距与斜率的95%置信区间包含0，即`cope_task1`的预测作用不显著。仅从方向上来看，`cope_task1`的预测作用为负，即个体的`cope_task1`的水平越高，个体越不可能为`secure`依恋风格。从odds上来看，-0.2719101意味着`cope_task1`每增加一个单位，odds缩小为越来的$e^-0.2719101$ = `r exp(-0.2719101)`。就概率而言，我们可以计算style的四个类别的概率：
+
+首先写出三个回归方程(attach_anxious作为参照组是已知的)：
+
+$$\begin{align}
+Y_{attach_avoidant} &= 2.056519 -0.5843319 \cdot cope_task1\\
+Y_{fearful} &= 3.405225 -0.9559211 \cdot cope_task1\\
+Y_{secure} &= 1.821685 -0.2719101 \cdot cope_task1
+\end{align}$$
+
+之后计算P公式的分母：
+
+$$\begin{align}
+denominator &= e^0 + e^{2.056519 -0.5843319 \cdot cope_task1} +  e^{3.405225 -0.9559211 \cdot cope_task1} + e^{1.821685 -0.2719101 \cdot cope_task1}\\ 
+&= 1 + e^{2.056519 -0.5843319 \cdot cope_task1} +  e^{3.405225 -0.9559211 \cdot cope_task1} + e^{1.821685 -0.2719101 \cdot cope_task1}
+\end{align}$$
+
+之后计算每个类别的概率，下面以`attach_avoidant`为例：
+
+$$\begin{align}
+P_{attach_avoidant} &= \frac{e^{2.056519 -0.5843319 \cdot cope_task1}}{e^0 + e^{2.056519 -0.5843319 \cdot cope_task1} +  e^{3.405225 -0.9559211 \cdot cope_task1} + e^{1.821685 -0.2719101 \cdot cope_task1}} \\
+&= \frac{e^{2.056519 -0.5843319 \cdot cope_task1}}{1 + e^{2.056519 -0.5843319 \cdot cope_task1} +  e^{3.405225 -0.9559211 \cdot cope_task1} + e^{1.821685 -0.2719101 \cdot cope_task1}}\\
+\end{align}$$
+
+最后，将`cope_task1`的值代入即可。R语言计算概率更加方便，下面定义了一个`P(cope_task1)`函数，输入`cope_task1`，`P(cope_task1)`将计算出`cope_task1`取特定值时四种依恋风格的概率。
+
+```{r}
+# 定义计算概率的函数
+P <- function(cope_task1) {
+  # 概率公式的分子
+  numerator_attach_avoidant = exp(2.056519 - 0.5843319 * cope_task1)
+  numerator_fearful = exp(3.405225 - 0.9559211 * cope_task1)
+  numerator_secure = exp(1.821685 - 0.2719101 * cope_task1)
+  # 概率公式的分母
+  denominator = 1 + numerator_attach_avoidant + numerator_fearful + numerator_secure
+  # 四种依恋风格的概率
+  P_attach_anxious = 1 / denominator
+  P_attach_avoidant = exp(2.056519 - 0.5843319 * cope_task1) / denominator
+  P_fearful = exp(3.405225 - 0.9559211 * cope_task1) / denominator
+  P_secure = exp(1.821685 - 0.2719101 * cope_task1) / denominator
+  # 以向量输出
+  c(cope_task1 = cope_task1, P_attach_anxious = P_attach_anxious, P_attach_avoidant = P_attach_avoidant, P_fearful = P_fearful, P_secure = P_secure)
+}
+# 计算cope_task1 = 1时四种依恋风格的概率
+P(cope_task1 = 1)
+# 计算cope_task1 = 1时四种依恋风格的累积概率
+sum(P(cope_task1 = 1)[2:5])
+# 计算(cope_task1 = 1-5)时四种依恋风格的概率，并存入data.frame `dat`
+dat <- data.frame(
+  matrix(P(seq(1, 5, 0.1)), 
+       ncol =  5,
+       dimnames = list(
+         NULL,
+         c("cope_task1","attach_anxious", "attach_avoidant", "fearful", "secure"))
+       )
+)
+head(dat)
+# 计算(cope_task1 = 1-5)时四种依恋风格的累积概率
+rowSums(dat[2:5])
+# 作图，以cope_task1为横轴，以四种依恋风格的概率为纵轴
+dat_l <- dat |> 
+  pivot_longer(
+    cols = c(2:5),
+    values_to = "P",
+    names_to = "style"
+  )
+ggplot(dat_l, aes(cope_task1, P, color = style)) +
+  geom_path()
+```
+
+注意，尽管`secure`对应的logistic回归方程中`cope_task1`的回归系数为负，这表示随着`cope_task1`的增大，`secure`相对于`attach_anxious`的odds在缩小，但是`attach_anxious`与`secure`的概率都在增大，而且`attach_anxious`的概率小于`secure`的概率。odds在缩小意味着什么？这表明`secure`的概率的增速小于`attach_anxious`的概率的增速。
+
+另外，`rowSums()`的计算表明，随着`cope_task1`的增长，四个类别的概率之和始终为一。

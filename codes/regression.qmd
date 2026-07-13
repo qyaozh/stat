@@ -1,0 +1,474 @@
+---
+title: "回归分析"
+subtitle: "Regression"
+author: "Qingyao Zhang"
+format: 
+  html: default
+  pdf: 
+    pdf-engine: xelatex
+    CJKmainfont: "HarmonyOS Sans SC"
+    lang: zh
+    toc: true
+    css: styles.css
+    date: last-modified
+    number-sections: true
+    code-line-numbers: true
+    tbl-cap-location: top
+    link-external-newwindow: true
+knitr:
+  opts_chunk: 
+    collapse: true
+    comment: "##" 
+draft:
+  true
+---
+
+```{r}
+#| include: false
+library(showtext)
+showtext_auto()
+```
+
+
+```{r}
+library(car)
+library(jtools)
+library(Keng)
+library(ggplot2)
+library(dplyr)
+library(effectsize)
+data("depress", package = "Keng")
+```
+
+## 研究问题
+
+我们可能关心以下问题：
+
+1. 问题应对对抑郁的预测作用？
+2. 三种应对方式对抑郁的整体的预测作用？
+3. 三种应对方式中，哪种应对方式对抑郁有预测作用？
+4. 三种应对方式中，哪种应对方式对抑郁的预测作用更强？
+5. 在排除了其他混淆变量的基础上，*问题应对*对抑郁的独特作用是怎样的？
+
+这些问题我们都可以通过回归分析这种统计方法予以解答。回归分析的作用就是用一个回归方程(例如，$y = b0*1 + b1*x1 + b2*x2 + e$)来界定一组自变量(例如：x1，x2)与一个结果变量(例如：y)的关系。从几何的视角来看(见下图)，回归分析的作用就是找到一条最贴近自变量x与结果变量y的回归直线。下面的图绘制了问题应对cope_task1预测抑郁depr1的散点与回归直线：
+
+```{r}
+#| echo: false
+#| message: false
+ggplot(depress, aes(cope_task1, depr1)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, fullrange = TRUE) +
+  geom_vline(xintercept = 0) +
+  annotate("segment", 
+           x = 1, 
+           xend = 2, 
+           y = 2.35, 
+           yend = 2.35, 
+           color = "forestgreen") +
+  annotate("segment", 
+           x = 2, 
+           xend = 2, 
+           y = 2.35, 
+           yend = 2.14, 
+           color = "brown",
+           linewidth = 2) +
+    annotate("text", 
+           x = 2.4, 
+           y = 2.25, 
+           label = "斜率 -0.21", 
+           color = "brown") +
+  annotate("text", 
+           x = 0, 
+           y = 2.55, 
+           label = "截距", 
+           color = "purple") +
+  scale_y_continuous(breaks = c(0,1,2,2.55,3)) +
+  theme(panel.grid.minor = element_blank())
+```
+
+## 回归分析的原理
+
+### 理解回归方程
+
+回归方程的一般形式是怎样的？怎样理解回归方程？
+
+以一元回归为例：
+
+\begin{align}
+y &= b0*1 + b1*x1  + e \\
+\hat{y} &= y - e \\
+&= b0*1 + b1*x1 \\
+e &= y - \hat{y}
+\end{align}
+
+在上面的回归方程中，
+
+- y是结果变量。x1是自变量，是导致y变化的原因。
+- $\hat{y}$是y的估计值，e是残差。
+- b0是截距(intercept)，是x1=0时y的平均值，是回归直线与y轴交点的纵坐标。
+- b1是x1的回归系数，表示x1变化1个单位所导致的y的变化量，是回归直线的斜率。
+
+以二元回归为例：
+
+\begin{align}
+y &= b0*1 + b1*x1 + b2*x2 + e \\
+\hat{y} &= y - e \\
+&= b0*1 + b1*x1 + b2*x2 \\
+e &= y - \hat{y}
+\end{align}
+
+在上面的回归方程中，
+
+- y是结果变量。x1与x2是自变量，是导致y变化的原因。
+- $\hat{y}$是y的估计值，e是残差。
+- $\hat{y}$是x1、x2的线性组合。
+- b0是截距(intercept)，是x1与x2都为0时y的平均值。
+- b1是x1的回归系数，更准确地讲，b1是x1的偏回归系数。b1表示：当x2保持不变时，x1变化1个单个所导致的y的变化量。b1是x1的独特效应。
+- b2是x2的回归系数，更准确地讲，b2是x2的偏回归系数。b1表示：当x1保持不变时，x2变化1个单个所导致的y的变化量。b2是x2的独特效应。
+
+下面，我们作问题应对cope_task1、情绪应对cope_emo1、回避应对cope_avo1预测抑郁depr1的回归：
+
+```{r}
+fit_pea <- lm(depr1 ~ cope_task1 + cope_emo1 + cope_avo1, depress)
+# 使用summary()查看回归分析的主要结果
+summary(fit_pea)
+# 使用names()查看回归分析的输出内容
+names(fit_pea)
+# 使用$提取回归系数
+bs <- fit_pea$coefficients
+bs
+# 使用jtools中的summ()查看排版更加整洁的统计结果
+library(jtools)
+summ(fit_pea)
+```
+
+通过前文的回归分析，我们得到cope_task1、cope_emo1、cope_avo1预测depr1的回归方程如下：depr1 = `r bs[1]` + `r bs[1]`\*cope_task1 + `r bs[1]`\*cope_emo1 + `r bs[1]`\*cope_avo1 + e。cope_task1对depr1的独特效应为`r bs[1]`，表示当cope_emo1、cope_avo1保持不变时，cope_task1增加1个单位，depr1会增加`r bs[1]`个单位。
+
+### 回归系数的估计
+
+回归分析使用**一般最小二乘法(Ordinary Least Squares, OLS)**对回归方程中的参数(回归系数)进行估计。Least Squares指的是“使*残差的平方和*最小”。最小二乘法的本质是：为回归方程找到使*残差的平方和*最小的一组参数估计值。
+
+下面我们计算*残差的平方和*：
+
+```{r}
+# 计算y的估计值
+## 方法1：使用回归方程手动计算y的估计值
+## 方法2：使用predict函数计算y的估计值
+y_est <- predict(fit_pea)
+# 计算残差
+## 手动计算
+residuals <- depress$depr1 - y_est
+head(residuals)
+## lm()自动输出残差
+head(fit_pea$residuals)
+# 残差平方和
+## 手动计算
+sum(residuals^2)
+```
+
+根据上述原理我们可以知道：目前估计得到的这一组回归系数所对应的残差平方和是最小的，四个回归系数中任意一个系数变化为另一个值(例如：cope_task1的回归系数从`r bs[2]`变为-0.167)，残差平方和都会增大。
+
+### 回归系数的显著性检验
+
+回归系数的显著性检验就是对回归系数进行单样本t检验，就是检验回归系数与0是否具有显著差异，即检验回归系数是否等于0。
+
+- 回归系数等于0表示自变量的效应为0，自变量的效应不存在，自变量对结果变量没有预测作用。
+- 回归系数不等于0表示自变量的效应不为0，自变量的效应存在，自变量对结果变量有预测作用。
+
+据此，我们对回归系数表中的结果进行解释。三种应对方式预测抑郁的回归系数表如下：
+
+```{r}
+round(
+  summary(fit_pea)$coefficients, 
+  digits = 3)
+```
+
+上述结果表明，在控制了问题应对、情绪应对的预测作用之后，回避应对的预测作用不显著。
+
+### 回归模型的拟合度
+
+回归系数的显著性检验回答了“一个自变量预测作用的有效性”问题。回归模型的拟合度回答的是“回归模型整体的预测作用”的有效性问题，即“多个自变量的整体的有效性”问题。
+
+与方差分析的思路一致，我们可以将因变量y的变异分解成两部分，一部分是回归方程可以解释的变异，另一部分是回归方程无法解释的变异，即残差变异。残差变异用残差的平方和表示。之后，对回归模型的整体有效性进行F检验。
+
+\begin{align}
+SS_{regression} &= \sum{(\hat{Y}-\bar{Y})^2} \\
+SS_{residuals} &= \sum{(Y-\hat{Y})^2} \\
+SS_{total} &= \sum{(Y-\bar{Y})^2} \\
+&= SS_{regression} + SS_{residuals} \\
+R^2 &= \frac{SS_{regression}}{SS_{residuals}} \\
+&= cor(\hat{y}, y) \\
+df_{regression} &= k - 1 \\
+df_{residuals} &= n - k - 1 \\
+df_{total} &= n - 1 \\
+R_{adjusted}^2 &= 1 - \frac{SS_{residuals}/df_{residuals}}{SS_{total}/df_{total}} \\
+MS_{regression} &= \frac{SS_{regression}}{df_{regression}} \\
+MS_{residuals} &= \frac{SS_{residuals}}{df_{residuals}} \\
+F &= \frac{MS_regression}{MS_{residuals}}
+\end{align}
+
+其中，R^2^称为决定系数，可以作为回归模型整体的效应量，它反映了结果变量在多大程度上被所有自变量所决定。R为复相关系数，是Y与$\hat{Y}$ 的相关系数，在一元回归中，R为自变量与结果变量的相关系数。对R^2^的显著性检验就是对回归模型整体拟合程度（或整体预测作用的有效性）的检验。
+
+R~adjusted~^2^是校正后的R^2^。与R^2^相比，R~adjusted~^2^的计算使用了自由度，R~adjusted~^2^反映了平均每个自变量所解释的变异。新的自变量的增加总是会增大R^2^，但是，只有新增自变量的独特效应高于既有自变量的平均水平时，R~adjusted~^2^才会增大。
+
+由前文可得，cope_task1、cope_emo1、cope_avo1预测depr1的回归方程的R^2^为0.2491,	校正后的R^2^为0.224，回归模型整体拟合程度的F检验结果为：
+F(3,90)=9.949, p < 0.001，该结果表明cope_task1、cope_emo1、cope_avo1预测depr1的回归方程整体上是有效的。校正后的R^2^为0.224。
+
+### 分层回归与方差分析
+
+回归模型将结果变量变量的变异分解成回归平方和与残差平方和两部分，回归平方和又可以进一步分解为自变量各自所解释的平方和。
+
+我们可以通过分层回归来考察每一个自变量所能解释的变异，即考察每个自变量所能解释的平方和。分层就是分步。在下面的回归分析中，我们每一步加入一个自变量，每个自变量的加入会导致残差平方和的减少，残差平方和减少的部分即为新加入的自变量所能预测和解释的部分。
+
+从R^2^的角度来看，每个自变量的加入会导致回归平方和的增加，同时导致R^2^的增加，R^2^变化量即反映了新增自变量对结果变量的解释力，R^2^变化量等于半偏相关的平方。我们可以对平方和的变化量进行方差分析，继而通过方差分析检验每个自变量对结果变量的变异的解释作用是否显著；对平方和的变化量进行方差分析，等同于对R^2^变化量进行F检验。
+
+```{r}
+# 分层回归
+# 第1步：加入cope_task1，建立回归模型1
+fit_p <- lm(depr1 ~ cope_task1, depress)
+r2_p <- summary(fit_p)$r.squared
+# 第2步：加入cope_emo1，建立回归模型2
+fit_pe <- lm(depr1 ~ cope_task1 + cope_emo1, depress)
+r2_pe <- summary(fit_pe)$r.squared
+# 第3步：加入cope_avo1，建立回归模型3
+fit_pea <- lm(depr1 ~ cope_task1 + cope_emo1 + cope_avo1, depress)
+r2_pea <- summary(fit_pea)$r.squared
+# 比较回归模型1与2
+cat("回归模型1与2的R方变化量:", r2_pe-r2_p)
+anova(fit_p, fit_pe)
+# 比较回归模型2与3
+cat("回归模型2与3的R方变化量:", r2_pea-r2_pe)
+anova(fit_pe, fit_pea)
+# 比较回归模型1与3
+cat("回归模型1与3的R方变化量:", r2_pea-r2_p)
+anova(fit_p, fit_pea)
+```
+
+注意，尽管分层回归通过R^2^变化量、残差平方和变化量对自变量的预测作用进行了F检验，F检验的p值与回归分析表中t检验的p值并不相等，这反映了两种检验方法并不等价。我们可以采用R base的anova()函数检验分层回归中每一层自变量的加入所解释的变异。注意，下方代码中自变量的纳入顺序是不同的，这会改变分层回归对平方和变化量的检验结果：
+
+```{r}
+anova(lm(depr1 ~ cope_task1 + cope_emo1 + cope_avo1, depress))
+anova(lm(depr1 ~ cope_emo1 + cope_avo1 + cope_task1, depress))
+```
+
+为何会发生这种变化？我们写出每一层回归分析所检验的回归方程，答案便不言自明。以`lm(depr1 ~ cope_task1 + cope_emo1 + cope_avo1, depress)`为例，对分层回归(1型方差)方差分析的剖析见下表。可见，每一层回归分析在检验新增自变量时的控制变量是不同的。
+
+|层    |新增自变量|回归方程(控制变量用[彩色]{.text-primary}标出)          |Df|Sum Sq|Mean Sq|F value|   Pr(>F)   |
+|--    |--        |----                                                   |- |--    |--     |--     |--          | 
+|第一层|cope_task1       |depr1 ~ cope_task1                                              |1 |2.0640|2.06404|18.1693|4.97e-05 ***|
+|第二层|cope_emo1       |depr1 ~ [cope_task1]{.text-primary} + cope_emo1                       |1 |1.1858|1.18576|10.4380|0.001725 ** |
+|第三层|cope_avo1       |depr1 ~ [cope_task1]{.text-primary} + [cope_emo1]{.text-primary} + cope_avo1|1 |0.1410|0.14099| 1.2411|0.268223    |
+
+:对分层回归(1型方差)方差分析的剖析 {.sm}
+
+通过分层回归与anova()计算得到的方差(例如：在上面的方差分析表中，cope_emo1所解释的方差为1.88714)被称为一型方差，一型方差不能准确反映自变量的独特效应。若要准确衡量自变量的独特效应，我们最好使用三型方差。我们可以使用car程序包中的Anova函数计算并检验三型方差：
+
+```{r}
+Anova(fit_pea, type = 3)
+```
+
+上述方差分析计算和检验了在控制其他两个自变量之后新增自变量对结果变量的独特效应。上述方差分析得到的p值与回归分析表中相应自变量回归系数的p值完全一致。对3型方差分析的剖析见下表：
+
+|新增自变量|回归方程(控制变量用彩色标出)                           |Sum Sq|Df|F value|Pr(>F)       |
+|--        |----                                                   |--    |- |--     |--           |
+|cope_task1       |depr1 ~ cope_task1 + [cope_emo1]{.text-primary} + [cope_avo1]{.text-primary}|1.2743|1 |11.2172|0.0011852 ** |
+|cope_emo1       |depr1 ~ [cope_task1]{.text-primary} + cope_emo1 + [cope_avo1]{.text-primary}|1.3245|1 |11.6592|0.0009599 ***|
+|cope_avo1       |depr1 ~ [cope_task1]{.text-primary} + [cope_emo1]{.text-primary} + cope_avo1|0.1410|1 |1.2411 |0.2682231    |
+
+: 对3型方差分析的剖析 {.sm}
+
+### 自变量的效应量
+
+与方差分析一致，一般使用$\eta^2$与$\eta_p^2$作为自变量的效应量。$\eta^2$与$\eta_p^2$的公式如下：
+
+\begin{align}
+\eta^2 &= \frac{SS_{effect}}{SS_{total}} \\
+\eta_{partial}^2 &= \frac{SS_{effect}}{SS_{effect} + SS_{error}}
+\end{align}
+
+$\eta^2$一般用来衡量回归模型整体的效应量，此时，$\eta^2=R^2$。$\eta_p^2$一般用来衡量单个自变量的效应量，$\eta_p^2$等于自变量与结果变量的偏相关的平方。
+
+下面我们基于公式计算自变量cope_task1的$\eta_p^2$：
+
+```{r}
+SS <- Anova(fit_pea)$"Sum Sq"
+partial_eta_squared <- SS[1]/(SS[1] + SS[4])
+partial_eta_squared
+```
+
+我们也可以使用`effectsize`中的`eta_squared()`计算回归分析的效应量，注意，`eta_squared()`的第一个参数应当设置为三型方差分析表：
+
+```{r}
+eta_squared(
+  Anova(fit_pea, type = 3), 
+  partial = TRUE)
+```
+
+$\eta_p^2$反映了自变量对结果变量的独特效应，前文对三个自变量的三型方差检验等同于对三个自变量$\eta_p^2$的显著性进行检验。
+
+### 回归分析的统计假定
+
+回归分析的前提是以下统计假定成立：
+
+1. 残差彼此独立。
+2. 残差方差齐性。
+3. 残差服从正态分布。
+
+这些统计假定可以借助诊断图进行直观地诊断(可参考`plot(fit_pea)`)，但难以进行准确地检验。
+
+### 极端值与异常值
+
+极端值与异常值可能会扭曲回归分析的估计结果，有时我们需要检查极端值与异常值是否存在、是否产生了较大的影响。检验极端值与异常值的最简单方法是检查每个数据点的残差，如果残差太大，那么相应的数据点大概率是极端值与异常值。残差的单位是不同的，残差的大小也难以比较。因此，我们可以将残差转化为标准分或者t分数，从而比较残差的相对大小。根据经验，如果残差的标准分、t分数的绝对值大于2，那么相应的残差相对来说就是极端值、异常值。我们可以使用`rstandard()`与`rstudent()`计算标准化的、t分数化的残差。
+
+另一个诊断极端值的指标是Cook distance，该指标衡量了删除该数据点后给回归系数带来的影响，Cook distance越大，则相应的数据点越极端。根据经验，Cook distance > 4/n（n是样本量）表明相应的数据点可能是极端值。我们可以使用`cooks.distance()`计算Cook distance。
+
+```{r}
+head(cooks.distance(fit_pea))
+head(rstandard(fit_pea))
+head(rstudent(fit_pea))
+```
+
+## 中心化回归分析
+
+中心化回归一般是“先将自变量进行中心化，然后再进行回归分析”。中心化指的是对变量x作如下转换：$x-\bar{x}$。中心化回归分析的好处是：平移坐标，使回归方程的截距易于解释。
+
+中心化回归的操作方法有两种：
+
+- 手动将原始数据进行中心化，然后进行回归分析。中心化的方法又有两种：
+  - 根据公式手动将自变量中心化。
+  - 使用R中相应的函数进行中心化。
+- 使用R中相应的函数直接输出中心化回归分析的结果。
+
+```{r}
+# 根据公式将cope_task1中心化
+depress$cope_task1_centered <- depress$cope_task1 - mean(depress$cope_task1)
+# 使用相应的函数进行中心化
+depress$cope_task1_centered <- Scale(depress$cope_task1, m = 0)
+# 中心化回归分析
+fit_p_centered <- lm(depr1 ~ cope_task1_centered, depress)
+summ(fit_p_centered)
+```
+
+回顾基于原始数据的回归分析的结果，cope_task1预测depr1的截距为2.55，表示当cope_task1 = 0时depr1的平均水平。然而，cope_task1的实际取值范围为1-4，cope_task1 = 0没有意义，因此此时的截距也没有意义。
+
+中心化后，cope_task1_centered预测depr1的截距为1.91，表示当cope_task1_centered = 0时depr1的平均水平为1.91。注意，经过中心化转换后，cope_task1_centered的均值为0，因此，此时的截距表示cope_task1_centered取平均值时depr1的平均水平，即，问题应对的水平为平均水平时抑郁的平均水平，这是有意义的。
+
+下面绘制对比了原始数据与中心化后的数据的散点图，可见，中心化的作用是使得坐标轴x = 0向右移动。
+
+```{r}
+ggplot(depress, aes(cope_task1, depr1)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, fullrange = TRUE) +
+  geom_vline(xintercept = 0)
+ggplot(depress, aes(cope_task1_centered, depr1)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, fullrange = TRUE) +
+  geom_vline(xintercept = 0)
+```
+
+## 标准化回归分析
+
+标准化回归一般是“先将所有的变量进行标准化，然后再进行回归分析”。标准化回归分析的好处是：回归系数不受变量单位的影响，这便于对单位不同的变量的回归分析进行比较。
+
+标准化回归的操作方法有两种：
+
+- 手动将原始数据进行标准化，然后进行回归分析。标准化的方法又有两种：
+  - 根据公式手动将原始数据标准化。
+  - 使用R中相应的函数进行标准化。
+- 使用R中相应的函数直接输出标准化回归分析的结果。
+
+下面的代码使用两种方法对变量进行标准化：
+
+```{r}
+# 使用公式进行标准化
+depress$z_depr1 <- (depress$depr1-mean(depress$depr1, na.rm = TRUE))/sd(depress$depr1, na.rm = TRUE)
+# 使用Keng程序包中的Scale函数进行标准化
+depress$z_cope_task1 <- Scale(depress$cope_task1, m = 0, sd = 1)
+```
+
+下面的相关分析表明，原始分与标准分的相关系数是一样的。
+
+```{r}
+# 相关分析
+cat("基于depr1与cope_task1原始分数的相关系数：", cor(depress$depr1, depress$cope_task1))
+cat("基于depr1与cope_task1原始分数的相关系数的平方：", cor(depress$depr1, depress$cope_task1)^2)
+cat("基于depr1与cope_task1标准分数的相关系数：", cor(depress$z_depr1, depress$z_cope_task1))
+cat("基于depr1与cope_task1标准分数的相关系数的平方：", cor(depress$z_depr1, depress$z_cope_task1)^2)
+```
+
+下面使用两种方法得到标准化回归分析的结果，标准化回归分析得到的回归系数被称为标准化回归系数：
+
+```{r}
+# 手动将变量标准化，然后进行回归分析的结果
+fit_p_std <- lm(z_depr1 ~ z_cope_task1, depress)
+summary(fit_p_std)
+# 前文基于原始数据进行了cope_task1预测depr1的回归分析，其结果为fit_p
+# 使用summ()直接输出标准化回归分析的结果
+summ(fit_p, 
+     transform.response = TRUE,
+     scale = TRUE)
+```
+
+上面的分析使用两种方法进行了标准化回归分析，两种方法得到的结果是一样的。另外可以看出，在上面的一元回归中，标准化回归系数等于自变量与结果变量的相关系数，回归系数的决定系数等于自变量与结果变量的相关系数的平方。
+
+## 类别自变量的回归
+
+当自变量是分类变量时，我们同样可以进行回归分析。简言之，独立样本t检验与被试间方差分析可以用回归分析代替。
+
+### 二分类自变量
+
+性别是一个常见的二分类变量。我们通常将性别进行0/1编码、1/2编码，由此一来，性别便易于作为自变量纳入回归方程，其回归系数也易于解释。例如，我们作性别、问题应对(中心化后的)预测抑郁的回归分析：
+
+```{r}
+table(depress$gender)
+fit_p_gender <- lm(depr1 ~ gender + cope_task1_centered, depress)
+summary(fit_p_gender)
+```
+
+上述结果中，gender的回归系数为-0.04963，这表明gender对抑郁具有负向预测作用(但不显著)，gender的效应-0.04963，其含义是：性别增加1个单位，这会导致depr1降低-0.04963分。性别增加1个单位意味着什么？depress数据对性别的编码是0/1，性别增加1个单位意味着性别从0变成1。简言之，gender这个自变量的回归系数反映的是抑郁的性别差异。
+
+上述结果中，截距为1.93543，这表示：gender = 0，cope_task1_centered = 0时，depr1的平均值为1.93543。即，对于gender = 0、问题应对处于平均水平的被试而言，其抑郁的平均水平为1.93543。
+
+### 多分类自变量
+
+当自变量是多分类变量时，我们同样可以进行回归分析。但是，在对多分类自变量进行回归分析之前，我们需要对其进行编码。对于分类水平为k的自变量，我们需要将其编码为k-1个新变量，然后将这k-1个新变量作为自变量纳入回归方程。编码的方式有很多，我们一般采用虚拟编码，这种编码方式既易于实施，其回归分析的结果也易于解释。
+
+例如，我们想要考察班级对抑郁的预测作用。depress数据中的class是一个包含4个水平(1班、2班、1班、4班)的分类变量，下面的虚拟编码方案将class这一个4水平的类别变量编码为class1、class2、clas9这3个0/1计分的虚拟变量。对于class1，编码方式如下：class是1班，则class1的值编码为1，否则编码为0。class2与class3以此类推。最终，class的4个水平用class1、class2、class3得分的组合来表示，class1、class2、class3都为0表示4班。
+
+class|class1|class2|class3
+-    |-     |-     |-
+3    |1     |0     |0
+5    |0     |1     |0
+9    |0     |0     |1
+12   |0     |0     |0
+
+: 虚拟编码方案 {.sm}
+
+我们使用dplyr中的case_when()进行虚拟编码：
+
+```{r}
+depress <- depress %>% 
+  mutate(
+    class1 = case_when(class == 1 ~ 1, .default = 0),
+    class2 = case_when(class == 2 ~ 1, .default = 0),
+    class3 = case_when(class == 3 ~ 1, .default = 0)
+  )
+```
+
+虚拟编码后，我们将虚拟变量作为自变量同时纳入回归方程。
+
+```{r}
+fit_class <- lm(depr1 ~ class1 + class2 + class3, depress)
+summary(fit_class)
+```
+
+如何解释上述回归系数？
+
+- 截距表示class1、class2、class3都为0时depr1的平均水平，即截距1.90表示4班的depr1的平均水平。
+- class1的回归系数-0.09655表示当class2、class3保持不变时，class1增加1个单位所导致的depr1的变化量。根据前文的虚拟编码方案表，class2、class3保持不变意味着class2、class3都取0，这样的话，class的取值范围缩减到3、12，class1的取值范围缩减到0、1，class1增加1个单位指的是class1的取值从0变成1，这意味着班级从4班变成1班。因此，class1的回归系数-0.09655表示班级从4班变为1班时depr1增加了-0.09655，换句话说，class1的回归系数-0.09655表示的是1班与4班的抑郁水平的差异。
+- 以此类推，class2的回归系数0.02308表示的是5班与4班的抑郁水平的差异。
+- 以此类推，class3的回归系数0.02308表示的是9班与4班的抑郁水平的差异。
+
+可见，上述虚拟变量的回归分析在解释回归系数的含义时总是以4班为参照组。参照组可以通过调整编码方案加以调整。虚拟变量取值都为0的组就是参照组。
+
+全文到此结束。

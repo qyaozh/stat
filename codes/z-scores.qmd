@@ -1,0 +1,92 @@
+---
+title: "z分数与标准分"
+subtitle: "z-scores and standardized scores"
+author: "Qingyao Zhang"
+format: 
+  html: default
+  pdf: 
+    pdf-engine: xelatex
+    CJKmainfont: "HarmonyOS Sans SC"
+    lang: zh
+    toc: true
+    date: last-modified
+    number-sections: true
+    code-line-numbers: true
+    tbl-cap-location: top
+    link-external-newwindow: true
+draft: true
+---
+
+```{r}
+library(Keng)
+data("well")
+library(ggplot2)
+```
+
+幸福感包含实现论幸福感与享乐论幸福感两类。一个人的实现论幸福感更高，还是享乐论幸福感更高呢？我们可以将其享乐论幸福感的得分与享乐论幸福感的得分进行比较。但是，两类幸福感得分的单位不同，直接比较其得分没有意义。在W研究中，实现论幸福感采用了七级评分，理论上的取值范围为1-7，而享乐论幸福感以正面情绪与负面情绪为测量指标，采用了五级评分，理论上的取值范围为1-5。W研究的数据已经收集完成，现在我们如何比较一个人两类幸福感的高低呢？我们可以将两类幸福感的原始得分转换成z分数。z分数的公式如下：
+
+\begin{align}
+z &= \frac{X - \mu}{\sigma} \\
+z &= \frac{X - M}{s}
+\end{align}
+
+X表示原始分数，$\mu$与$\sigma$表示总体的均值与标准差，M与s表示样本的均值与标准差。分析z分数的公式可得，公式中的分子与分母都包含单位，经过除法运算，原有的单位相互抵消，最终得到的z分数没有单位。换个角度讲，所有的z分数皆以“1”为单位。
+
+接下来，我们将实现论幸福感与享乐论幸福感转换为z分数：
+
+```{r}
+well$z_flourish1 <- (well$flourish1 - mean(well$flourish1))/sd(well$flourish1)
+well$z_posEmo1 <- (well$posEmo1 - mean(well$posEmo1))/sd(well$posEmo1)
+well$z_negEmo1 <- (well$negEmo1 - mean(well$negEmo1))/sd(well$negEmo1)
+```
+
+接下来，我们比较flourish1原始得分与z分数的分组频数分布图。可见，flourish1原始得分与z分数的分组频数分布的形态没有发生变化，纵坐标没有发生变化，只有横坐标发生了变化。
+
+```{r}
+ggplot(well, aes(flourish1)) +
+  geom_histogram(bins = 7, fill = "white", color = "black") +
+  theme_classic()
+ggplot(well, aes(z_flourish1)) +
+  geom_histogram(bins = 7, fill = "white", color = "black") +
+  theme_classic()
+```
+
+接下来，我们比较flourish1原始得分与z分数的均值与标准差。可见，所有z分数的均值皆为0，标准差皆为1。
+
+```{r}
+psych::describe(well[c("flourish1", "posEmo1", "negEmo1", 
+                       "z_flourish1", "z_posEmo1", "z_negEmo1")])[c(3, 4)]
+```
+
+我们关心的问题是：一个人的实现论幸福感更高，还是享乐论幸福感更高？以编号为1787的学生为例，我们可以查到其实现论幸福感、正面情绪、负面情绪的原始分数分别为5.75、4.17、3.00，表面上看，该学生的正面情绪高于其负面情绪。该学生实现论幸福感、正面情绪、负面情绪的z分数分别为0.46、0.80、0.91，我们可以在同一个z分数的坐标轴上标出实现论幸福感、正面情绪、负面情绪的位置（下图中的纵坐标表示概率密度，后文将对概率密度进行讲解）。表面上看，该学生的负面情绪高于其正面情绪，其正面情绪高于其实现论幸福感。就正面情绪与负面情绪的比较而言，我们似乎得到了相互矛盾的结论。事实上，原始分数反映的是个体的绝对水平，z分数反映的是个体的相对水平，z分数反映的是个体在群体中的相对位置。我们将得分从高到低进行排序，一名学生的z分数越高，表明该学生的排名越靠前。
+
+
+```{r}
+dat_plot <- data.frame(z = seq(-3, 3, 0.01))
+ggplot(dat_plot, aes(z)) +
+  geom_function(fun = dnorm, args = list(mean = 0, sd = 1)) +
+  scale_y_continuous(name = "density", expand = expansion(mult = c(0, 0.05))) +
+  geom_vline(xintercept = 0.46, color = "red") +
+  geom_vline(xintercept = 0.80, linewidth = 1, color = "green") +
+  geom_vline(xintercept = 0.91, linewidth = 1.5, color = "blue") +
+  scale_x_continuous(breaks = c(-4:0, 0.46, 0.80, 0.91, 2:4)) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+    axis.text.x = element_text(vjust = 0.8,
+                               angle = 90))
+```
+
+因此，在绝对水平上（自己与自己比较），编号为1787的学生的正面情绪高于其负面情绪，但在相对水平上（自己与他人比较），该学生负面情绪得分的排名要高于其正面情绪。同理，我们可以得到：该学生正面情绪的排名高于其实现论幸福感。
+
+对于z分数的三种解释：
+
+1. z分数反映了个体分数在一组数据中的排名。一组数据从高到低排名，z分数越大，表示排名越靠前。
+2. z分数反映了个体分数相对于均值的位置，正数表示在均值右侧，负数表示在均值左侧。
+3. z分数反映了个体分数与均值的距离，准确地讲，z分数表示个体分数与均值相距z个标准差。
+
+\begin{align}
+z &= \frac{X - \mu}{\sigma} \\
+X - \mu &= z{\sigma} \\
+z &= \frac{X - M}{s} \\
+X - M &= zs \\
+\end{align}

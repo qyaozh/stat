@@ -1,0 +1,541 @@
+---
+title: "多分类自变量的编码方案"
+subtitle: "Coding categorical predictors"
+draft: true
+---
+在回归分析中，若自变量是多分类的类别变量，我们需要将其进行编码，然后将其纳入回归方程。如果该分类变量有k个水平，我们需要将其编码为k-1个变量。
+
+例如，要通过回归分析检验class这一多分类自变量对depr1（depression）的影响，我们不能将class直接当做连续变量进行回归分析，因为class的得分3、5、9、12之间的差值、距离没有实际意义，我们需要将class进行编码，将其转化为有意义的predictor。
+
+## PROCESS中的编码方案
+
+PROCESS中有4种编码方案：
+
+- Indicator
+- Sequential
+- Helmert
+- Effect
+
+其中，indicator即为dummy coding。
+
+### Dummy coding
+
+我们将`class`进行虚拟编码，其编码方案如下：
+
+|class|class2|class3|class4|
+|-|-|-|-|
+1|0|0|0
+2|1|0|0
+3|0|1|0
+4|0|0|1
+
+: 虚拟编码 {.sm}
+
+注：class2 = 该班是2班吗；class3 = 该班是3班吗；class4 = 该班是4班吗。
+
+class被编码为三个虚拟变量class2、class3、class4，在回归分析中，我们将class2、class3、class4同时纳为自变量，它们共同反映了class对因变量的影响。该编码方案以3班为对照组，将5、9、12班分别与3班进行比较。就回归系数的含义而言，该回归模型`depr1 ~ intercept*1 + c5*class2 + c9*class3 + c12*class4`的截距intercept表示自变量都为0时depr1的平均水平，当class2、class3、class4都为0表示3班，所以intercept为3班的平均水平。class2
+的回归系数c5表示其他自变量保持不变时，class2从0变为1所导致的depr1的变化量，当class为3和5时,class3和class4的取值保持不变，都为0，此时class2从0变为1表示班级从3班变为5班，因此class2的回归系数c5表示5班与3班的差异。同理，class3的回归系数表示9班与3班的差异，class4的回归系数表示12班与3班的差异。
+
+首先，加载程序包与数据。
+
+```{r}
+#| message: false
+# dataset depress in Keng package is used in this article
+library(Keng)
+data(depress)
+```
+
+之后，我们计算各组均值（即各班均值），并使用各组的均值计算回归分析中的系数。这一步的目的是核查回归分析的系数的含义。
+
+```{r}
+# mean of class 3
+class3mean <- mean(depress[depress$class == 3, "depr1"])
+# mean of class 5
+class2mean <- mean(depress[depress$class == 5, "depr1"])
+# mean of class 9
+class3mean <- mean(depress[depress$class == 9, "depr1"])
+# mean of class 12
+class4mean <- mean(depress[depress$class == 12, "depr1"])
+
+# compute regression parameters through the means of classes
+intercept <- class3mean
+c5 <- class2mean - class3mean
+c9 <- class3mean - class3mean
+c12 <- class4mean - class3mean
+```
+
+我们将class这一个多分类变量编码为3个变量。
+
+```{r}
+# dummy coding
+depress$class2 <- ifelse(depress$class == 5, 1, 0)
+depress$class3 <- ifelse(depress$class == 9, 1, 0)
+depress$class4 <- ifelse(depress$class == 12, 1, 0)
+```
+
+输出基于四个均值计算得到的回归系数。
+
+```{r}
+c(intercept = intercept, c5 = c5, c9 = c9, c12 = c12)
+```
+
+最后，进行回归分析，并输出其结果。注意将上一步计算得到的回归系数与下面的回归系数进行比较。
+
+```{r}
+# regression analysis
+summary(lm(depr1 ~ class2 + class3 + class4, depress))
+```
+
+### Sequential coding
+
+Sequential coding将一个水平与后一个水平进行比较。下面的编码方案将5班与3班比较，将9班与5班比较，将12班与9班比较。该编码方案适用于顺序变量（例如：年级1-4）。
+
+|class|class2v3|class3v5|class4v9|
+|    -|       -|       -|        -|
+|    3|       0|       0|        0|
+|    5|       1|       0|        0|
+|    9|       1|       1|        0|
+|   12|       1|       1|        1|
+
+: Sequential coding {.sm}
+
+将class2v3、class3v5、class4v9纳为自变量，得到回归方程`depr1 = intercept*1 + c5v3*class2v3 + c9v5*class3v5 + c12v9*class4v9`，其中intercept为3班的均值。class2v3的回归系数c5v3检验3班与5班的差异，c5v3等于(class2mean - class3mean)。
+
+```{r}
+# recode() function in car package is used in this article
+library(car)
+
+# Sequential coding using recode() in car package
+depress$class2v3  <- recode(depress$class, "3 = 0; else = 1")
+depress$class3v5  <- recode(depress$class, "c(3, 5) = 0; else = 1")
+depress$class4v9 <- recode(depress$class, "12= 1; else = 0")
+
+# compute regression parameters through the means of classes
+intercept <- class3mean
+c5v3 <- class2mean - class3mean
+c9v5 <- class3mean - class2mean
+c12v9 <- class4mean - class3mean
+c(intercept = intercept, c5v3 = c5v3, c9v5 = c9v5, c12v9 = c12v9)
+
+# regression analysis
+summary(lm(depr1 ~ class2v3 + class3v5 + class4v9, depress))
+```
+
+与Repeated coding相比，Sequential coding的回归系数的含义是一样的，但截距的含义不同。使用Repeated coding时，截距表示4个班级的均值的均值；使用Sequential coding时，截距表示3班的均值。
+
+### Helmert coding 
+
+该编码方案适用于顺序变量（例如：年级1-4）。编码方案如下：
+
+|class|H3|H5|H9|
+|    -| -| -| -|
+|    3| 3| 0| 0|
+|    5|-1| 2| 0|
+|    9|-1|-1| 1|
+|   12|-1|-1|-1|
+
+: Helmert coding {.sm}
+
+注：H3 = 将3班与5、9、12班的均值进行对比；H5 = 将5班与9、12班的均值进行对比；H9 = 将3班与5、9、12班的均值进行对比。
+
+我们将H3、H5、H9纳为回归方程的自变量，建立回归模型`depr1 ~ intercept*1 + c3*H3 + c5*H5 + c9*H9`。截距intercept表示四个班级的depr1的均值的均值。H3的回归系数c3检验3班与5、9、12班均值的均值的差异，该系数**等于**[(class3mean - (class2mean + class3mean + class4mean)/3)/4]。H5的回归系数c5检验5班与9、12班均值的均值的差异，H9的回归系数c9检验9班与12班的均值的差异。
+
+Helmert coding与回归分析的操作如下：
+
+```{r}
+# Helmert coding using recode() in car package
+depress$H3 <- recode(depress$class, "3 = 3; else = -1")
+depress$H5 <- recode(depress$class, "3 = 0; 5 = 2; else = -1")
+depress$H9 <- recode(depress$class, "c(3, 5) = 0; 9 = 1; 12 = -1")
+
+# compute regression parameters through the means of classes
+intercept <- mean(c(class3mean, class2mean, class3mean, class4mean))
+c3 <- (class3mean - (class2mean + class3mean + class4mean)/3)/4
+c5 <- (class2mean - (class3mean + class4mean)/2)/3
+c9 <- (class3mean - class4mean)/2
+c(intercept = intercept, c3 = c3, c5 = c5, c9 = c9)
+
+# regression analysis
+summary(lm(depr1 ~ H3 + H5 + H9, depress))
+```
+
+我们可以对编码系数进行调整，使H3的回归系数c3**等于**[class3mean - (class2mean + class3mean + class4mean)/3]：
+
+|class|  H3|  H5|  H9|
+|    -|   -|   -|   -|
+|    3| 3/4|   0|   0|
+|    5|-1/4| 2/3|   0|
+|    9|-1/4|-1/3| 1/2|
+|   12|-1/4|-1/3|-1/2|
+
+: Helmert coding {.sm}
+
+```{r}
+# Helmert coding using recode() in car package
+depress$H3 <- recode(depress$class, "3 = 3/4; else = -1/4")
+depress$H5 <- recode(depress$class, "3 = 0; 5 = 2/3; else = -1/3")
+depress$H9 <- recode(depress$class, "c(3, 5) = 0; 9 = 1/2; 12 = -1/2")
+
+# compute regression parameters through the means of classes
+intercept <- mean(c(class3mean, class2mean, class3mean, class4mean))
+c3 <- class3mean - (class2mean + class3mean + class4mean)/3
+c5 <- class2mean - (class3mean + class4mean)/2
+c9 <- class3mean - class4mean
+c(intercept = intercept, c3 = c3, c5 = c5, c9 = c9)
+
+# regression analysis
+summary(lm(depr1 ~ H3 + H5 + H9, depress))
+```
+
+
+### Effect coding
+
+Effect coding又被称为contrast coding，也被称为deviation coding，其编码方案如下：
+
+|class|class3|class2|class3|
+|    -|     -|     -|     -|
+|    3|     1|     0|     0|
+|    5|     0|     1|     0|
+|    9|     0|     0|     1|
+|   12|    -1|    -1|    -1|
+
+: Effect coding {.sm}
+
+将class3、class2、class3纳为自变量，得到回归方程`depr1 = intercept*1 + c3*class3 + c5*class2 + c9*class3`，其中intercept为4个班的均值的均值。class3的回归系数c3将3班的均值与4个班的均值的均值进行比较，c3等于(class3mean - (class3mean + class2mean + class3mean + class4mean)/3)。class2的回归系数c5将5班的均值与4个班的均值的均值进行比较。class3的回归系数c9将9班的均值与4个班的均值的均值进行比较。
+
+```{r}
+# Effect coding using recode() in car package
+depress$class3 <- recode(depress$class, "3 = 1; 12 = -1; else = 0")
+depress$class2 <- recode(depress$class, "5 = 1; 12 = -1; else = 0")
+depress$class3 <- recode(depress$class, "9 = 1; 12 = -1; else = 0")
+
+# compute regression parameters through the means of classes
+intercept <- mean(c(class3mean, class2mean, class3mean, class4mean))
+c3 <- class3mean - mean(c(class3mean, class2mean, class3mean, class4mean))
+c5 <- class2mean - mean(c(class3mean, class2mean, class3mean, class4mean))
+c9 <- class3mean - mean(c(class3mean, class2mean, class3mean, class4mean))
+c(intercept = intercept, c3 = c3, c5 = c5, c9 = c9)
+
+# regression analysis
+summary(lm(depr1 ~ class3 + class2 + class3, depress))
+```
+
+
+
+
+## SPSS中的编码方案
+
+- Simple
+- Deviation
+- Difference
+- Helmert
+- Repeated
+- Polynomial
+
+### Simple coding
+
+编码方案如下：
+
+|class|class2|class3|class4|
+|    -|     -|     -|      -|
+|    3|    -1|    -1|     -1|
+|    5|     3|    -1|     -1|
+|    9|    -1|     3|     -1|
+|   12|    -1|    -1|      3|
+
+: Simple coding {.sm}
+
+注：class2 = 将5班与3班的均值进行对比；class3 = 将9班与3班的均值进行对比；class4 = 将12班与3班的均值进行对比。
+
+我们将class2、class3、class4纳为回归方程的自变量，建立回归模型`depr1 ~ intercept*1 + c5*class2 + c9*class3 + c12*class4`。截距intercept表示四个班级的depr1的均值的均值。class2的回归系数c5检验5班与3班的差异的显著性，该系数**等于**5班均值与3班均值的差值的1/4[(class2mean - class3mean)/4]。class3的回归系数c9检验9班与3班的差异，class4的回归系数c12检验12班与3班的差异。
+
+Simple coding与回归分析的操作如下：
+
+```{r}
+# Simple coding
+depress$class2 <- ifelse(depress$class == 5, 3, -1)
+depress$class3 <- ifelse(depress$class == 9, 3, -1)
+depress$class4 <- ifelse(depress$class == 12, 3, -1)
+
+# compute regression parameters through the means of classes
+intercept <- mean(c(class3mean, class2mean, class3mean, class4mean))
+c5 <- (class2mean - class3mean)/4
+c9 <- (class3mean - class3mean)/4
+c12 <- (class4mean - class3mean)/4
+c(intercept = intercept, c5 = c5, c9 = c9, c12 = c12)
+
+# regression analysis
+summary(lm(depr1 ~ class2 + class3 + class4, depress))
+```
+
+我们可以对编码系数进行调整，使class2的回归系数c5**等于**5班均值与3班均值的差值[(class2mean - class3mean)/4]:
+
+```{r}
+# Simple coding
+depress$class2 <- ifelse(depress$class == 5, 3/4, -1/4)
+depress$class3 <- ifelse(depress$class == 9, 3/4, -1/4)
+depress$class4 <- ifelse(depress$class == 12, 3/4, -1/4)
+
+# compute regression parameters through the means of classes
+intercept <- mean(c(class3mean, class2mean, class3mean, class4mean))
+c5 <- (class2mean - class3mean)
+c9 <- (class3mean - class3mean)
+c12 <- (class4mean - class3mean)
+c(intercept = intercept, c5 = c5, c9 = c9, c12 = c12)
+
+# regression analysis
+summary(lm(depr1 ~ class2 + class3 + class4, depress))
+```
+
+### Helmert coding 
+
+Helmert coding前文已介绍过。
+
+### Difference coding
+
+Difference coding又称Reverse Helmert Coding，其编码顺序与Helmert coding相反，Difference coding编码方案如下：
+
+|class|D5|D9|D12|
+|    -| -| -|  -|
+|    3|-1|-1| -1|
+|    5| 1|-1| -1|
+|    9| 0| 2| -1|
+|   12| 0| 0|  3|
+
+: Difference coding {.sm}
+
+### Polynomial coding
+
+Polynomial coding适用于勾画变量的变化趋势，例如：从3班到5班到9班到12班，depr1是否表现出线性变化趋势呢？我们可以用Polynomial coding对此进行考察。class包含4个类别，需要编码为3个codes，在Polynomial coding中，这三个codes分别代表线性趋势、二次曲线趋势、三次曲线趋势。Polynomial coding编码方案如下：
+
+|class| L| Q| C|
+|    -| -| -| -|
+|    3|-3| 1|-1|
+|    5|-1|-1| 3|
+|    9| 1|-1|-3|
+|   12| 3| 1| 1|
+
+: Polynomial coding {.sm}
+
+```{r}
+# Polynomial coding using recode() in car package
+depress$L <- recode(depress$class, "3 = -3; 5 = -1; 9 = 1; 12 = 3")
+depress$Q <- recode(depress$class, "3 = 1; 5 = -1; 9 = -1; 12 = 1")
+depress$C <- recode(depress$class, "3 = -1; 5 = 3; 9 = -3; 12 = 1")
+
+# regression analysis
+summary(lm(depr1 ~ L + Q + C, depress))
+```
+
+### Repeated coding
+
+Repeated coding又被称为backward difference coding，其编码方案如下：
+
+|class|class2v3|class3v5|class4v9|
+|    -|   -|  -|   -|
+|    3|-3/4|-1/2|-1/4|
+|    5| 1/4|-1/2|-1/4|
+|    9| 1/4| 1/2|-1/4|
+|   12| 1/4| 1/2| 3/4|
+
+: Repeated coding {.sm}
+
+将class2v3、class3v5、class4v9纳为自变量，得到回归方程`depr1 = intercept*1 + c5v3*class2v3 + c9v5*class3v5 + c12v9*class4v9`，其中intercept为3班、5班、9班、12班的均值的均值。class2v3的回归系数c5v3检验3班与5班的差异，c5v3等于(class2mean - class3mean)。
+
+```{r}
+# Repeated coding using recode() in car package
+depress$class2v3  <- recode(depress$class, "3 = -3/4; else = 1/4")
+depress$class3v5  <- recode(depress$class, "c(3, 5) = -1/2; else = 1/2")
+depress$class4v9 <- recode(depress$class, "12= 3/4; else = -1/4")
+
+# compute regression parameters through the means of classes
+intercept <- mean(c(class3mean, class2mean, class3mean, class4mean))
+c5v3 <- class2mean - class3mean
+c9v5 <- class3mean - class2mean
+c12v9 <- class4mean - class3mean
+c(intercept = intercept, c5v3 = c5v3, c9v5 = c9v5, c12v9 = c12v9)
+
+# regression analysis
+summary(lm(depr1 ~ class2v3 + class3v5 + class4v9, depress))
+```
+
+
+## 其他编码方案
+
+### Forward difference coding
+
+我们调整backward difference coding（Repeated coding）的比较方向，就得到了Forward difference coding这一编码方案。
+
+|class|class3v5|class2v9|class3v12|
+|    -|   -|  -|   -|
+|    3| 3/4| 1/2| 1/4|
+|    5|-1/4| 1/2| 1/4|
+|    9|-1/4|-1/2| 1/4|
+|   12|-1/4|-1/2|-3/4|
+
+: Forward difference coding {.sm}
+
+### 自定义编码方案
+
+我们可以使用自定义编码方案检验**几乎所有**我们想要检验的任何差异。**几乎所有**意味着有些编码方案有效的，有些是无效的。Granziol等人（2025）指出，有效的编码方案需满足以下3个条件：（1）对于分类水平为k的分类变量，我们只能将其编码为k-1个编码变量，即，一次回归分析只能进行k-1次比较；（2）编码变量两两之间不能重复；（3）一个编码变量不能是其他编码变量的线性组合（即，多个编码变量不能存在多重共线性）。
+
+在下面的编码方案中，code1将3班与5班进行比较，code2将5班与9班、12班的均值的均值进行比较，code3将12班与3班、5班、9班的均值的均值进行比较。
+
+|class|code1|code2|code3|
+|    -|    -|    -|    -|
+|    3|    1|    0| -1/3|
+|    5|   -1|    1| -1/3|
+|    9|    0| -1/2| -1/3|
+|   12|    0| -1/2|    1|
+
+: 自定义编码方案 {.sm}
+
+首先定义这个编码矩阵，Granziol等人（2025）将这个矩阵称为**假设矩阵**：
+
+```{r}
+code1 <- c(   1,   -1,    0,    0)
+code2 <- c(   0,    1, -1/2, -1/2)
+code3 <- c(-1/3, -1/3, -1/3,    1)
+# use fractions() in MASS package
+library(MASS)
+mat <- fractions(cbind(code1, code2, code3))
+rownames(mat) <- c("class 3", "class 5", "class 9", "class 12")
+mat
+```
+
+然后使用`MASS`中`ginv()`的对其进行转换，得到我们要在回归分析中实际使用的矩阵，Granziol等人（2025）将这个矩阵称为**对比矩阵**：
+
+```{r}
+mat_final <- fractions(ginv(t(mat)))
+colnames(mat_final) <- colnames(mat)
+rownames(mat_final) <- c("class 3", "class 5", "class 9", "class 12")
+mat_final
+```
+
+之后进行回归分析，回归方程是`depr1 ~ intercept*1 + c1*code1 + c2*code2 + c3*code3`。
+
+```{r}
+# Custom coding using recode() in car package
+depress$code1 <- recode(depress$class, "3 = 3/4; 5 = -1/4; 9 = -1/2; 12 =   0")
+depress$code2 <- recode(depress$class, "3 = 1/2; 5 =  1/2; 9 =   -1; 12 =   0")
+depress$code3 <- recode(depress$class, "3 =   0; 5 =    0; 9 = -3/4; 12 = 3/4")
+
+# compute regression parameters through the means of classes
+intercept <- mean(c(class3mean, class2mean, class3mean, class4mean))
+c1 <- class3mean - class2mean
+c2 <- class2mean - mean(c(class3mean, class4mean))
+c3 <- class4mean - mean(c(class3mean, class2mean, class3mean))
+c(intercept = intercept, c1 = c1, c2 = c2, c3 = c3)
+
+# regression analysis
+summary(lm(depr1 ~ code1 + code2 + code3, depress))
+```
+
+注意，前文没有强调截距的编码。对于有k个水平的分类自变量，我们需要将其编码为k-1个变量。那截距呢？如果将截距考虑在内，完整的编码方案应当包含对截距的编码code0。code0的每一个系数都是1/4，表示我们想让截距表示4个水平的均值的均值。
+
+```{r}
+code0 <- c( 1/4,  1/4,  1/4,  1/4)
+code1 <- c(   1,   -1,    0,    0)
+code2 <- c(   0,    1, -1/2, -1/2)
+code3 <- c(-1/3, -1/3, -1/3,    1)
+mat <- fractions(cbind(code0, code1, code2, code3))
+rownames(mat_final) <- c("class 3", "class 5", "class 9", "class 12")
+rownames(mat) <- c("class 3", "class 5", "class 9", "class 12")
+mat
+```
+
+注意，上面的矩阵并不是我们最终在回归分析中使用的矩阵，我们需要使用`MASS`中`ginv()`的对其进行转换:
+
+```{r}
+mat_final <- fractions(ginv(t(mat)))
+colnames(mat_final) <- colnames(mat)
+rownames(mat_final) <- c("class 3", "class 5", "class 9", "class 12")
+mat_final
+```
+
+上面的矩阵是我们最终在回归分析中使用的矩阵。对截距来说，与一般的回归分析一致，我们将截距的自变量编码为`1`。这里的`1`实际上是一个向量，它有*n* 个维度（*n* 是样本量），每一个case的值都是1。在完整的回归方程中，例如`depr1 ~ intercept*1 + c1*code1 + c2*code2 + c3*code3`，截距项是`intercept*1`，`intercept`与`c1`一样，是一个未知的、有待估计的参数，而`1`与`code1`一样，是一个已知的、不需要估计的变量（向量）。
+
+我们也可以自定义截距，让截距表示3班的均值。
+
+```{r}
+# compute codes
+code0 <- c(   1,    0,    0,    0)
+code1 <- c(   1,   -1,    0,    0)
+code2 <- c(   0,    1, -1/2, -1/2)
+code3 <- c(-1/3, -1/3, -1/3,    1)
+mat <- fractions(cbind(code0, code1, code2, code3))
+rownames(mat) <- c("class 3", "class 5", "class 9", "class 12")
+mat
+mat_final <- fractions(ginv(t(mat)))
+rownames(mat_final) <- c("class 3", "class 5", "class 9", "class 12")
+colnames(mat_final) <- colnames(mat)
+mat_final
+
+# Custom coding using recode() in car package
+depress$code1 <- recode(depress$class, "3 = 0; 5 = -1; 9 = -5/4; 12 = -3/4")
+depress$code2 <- recode(depress$class, "3 = 0; 5 =  0; 9 = -3/2; 12 = -1/2")
+depress$code3 <- recode(depress$class, "3 = 0; 5 =  0; 9 = -3/4; 12 =  3/4")
+
+# compute regression parameters through the means of classes
+intercept <- class3mean
+c1 <- class3mean - class2mean
+c2 <- class2mean - mean(c(class3mean, class4mean))
+c3 <- class4mean - mean(c(class3mean, class2mean, class3mean))
+c(intercept = intercept, c1 = c1, c2 = c2, c3 = c3)
+
+# regression analysis
+summary(lm(depr1 ~ code1 + code2 + code3, depress))
+```
+
+### Pairwise coding
+
+对于有3个分类水平的自变量，如果我们要进行两两配对比较，我们总共需要3次配对比较。前面讲到的编码方案只能实现2次配对比较。本文提出一种新的编码方案，利用截距，通过一次回归分析实现三分类自变量3个水平的3次配对比较。
+
+首先我们根据上述目的设计矩阵。这里我们将3班、5班、9班的数据选出来，比较3个班的depr1的差异。注意，这里的p1v3相当于截距。
+
+|class|p3v1|p1v2|p2v3|
+|    -|   -|   -|   -|
+|    3|  -1|   1|   0|
+|    5|   0|  -1|   1|
+|    9|   1|   0|  -1|
+
+: Pairwise coding {.sm}
+
+
+```{r}
+# compute codes
+p1v3 <- c(-1,  0,  1)
+p1v2 <- c( 1, -1,  0)
+p2v3 <- c( 0,  1, -1)
+mat <- fractions(cbind(p1v3, p1v2, p2v3))
+rownames(mat) <- c("class 3", "class 5", "class 9")
+mat
+mat_final <- fractions(ginv(t(mat)))
+rownames(mat_final) <- c("class 3", "class 5", "class 9")
+colnames(mat_final) <- colnames(mat)
+mat_final
+
+# Custom coding using recode() in car package
+depress$p1v3 <- recode(depress$class, "3 = -1/3; 5 =    0; 9 =  1/3")
+depress$p1v2 <- recode(depress$class, "3 =  1/3; 5 = -1/3; 9 =    0")
+depress$p2v3 <- recode(depress$class, "3 =    0; 5 =  1/3; 9 = -1/3")
+```
+
+接下来，我们进行回归分析，建立回归方程`depr1 = c0*p1v3 + c1*p1v2 + c2*p2v3`，注意在这个回归方程中，`c0*p1v3`是截距项，我们需要将`lm()`默认的截距项`intercept*1`去除。
+
+```{r}
+# compute regression parameters through the means of classes
+c0 <- class3mean - class3mean
+c1 <- class3mean - class2mean
+c2 <- class2mean - class3mean
+c(c0 = c0, c1 = c1, c2 = c2)
+
+# regression analysis
+summary(lm(depr1 ~ p1v3 + p1v2 + p2v3 - 1, depress[depress$class %in% c(3, 5, 9), ]))
+```
+
+结果显示，1 coefficient is not defined because of singularities。这意味着自变量之间存在多重共线性问题。事实上，对于三个编码变量p1v3，p1v2，p2v3，它们的关系是：p2v3 = - p1v3 - p1v2。 
+
+## 参考文献
+
+Granziol, U., Rabe, M., Gallucci, M., Spoto, A., & Vidotto, G. (2025). Not Another Post Hoc Paper: A New Look at Contrast Analysis and Planned Comparisons. *Advances in Methods and Practices in Psychological Science*, *8*(1), 25152459241293110.

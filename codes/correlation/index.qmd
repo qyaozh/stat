@@ -1,0 +1,185 @@
+---
+title: "皮尔逊相关分析"
+subtitle: "Correlation"
+author: "Qingyao Zhang"
+format: 
+  html: default
+  # pdf: 
+  #   pdf-engine: xelatex
+  #   CJKmainfont: "HarmonyOS Sans SC"
+  #   lang: zh
+  #   toc: true
+  #   css: styles.css
+  #   date: last-modified
+  #   number-sections: true
+  #   code-line-numbers: true
+  #   tbl-cap-location: top
+  #   link-external-newwindow: true
+knitr:
+  opts_chunk: 
+    collapse: true
+    comment: "##" 
+draft:
+  true
+---
+```{r}
+library(ggplot2)
+library(psych)
+library(Keng)
+data("depress", package = "Keng")
+```
+
+## 相关的概念
+
+皮尔逊相关反映了两个变量之间的共变：
+
+- X增加，Y便减少。
+- X增加，Y便增加。
+
+## 相关的三个特点
+
+- 形式：线性vs非线性
+
+```{r}
+#| echo: false
+set.seed(20251212)
+x = rnorm(100)
+y1 = 2*x + rnorm(100)
+y2 = x^2 + rnorm(100)
+dat <- data.frame(
+  x = c(x,x),
+  y = c(y1,y2),
+  type = c(rep("linear",100), rep("non-linear",100)))
+ggplot(dat, aes(x, y)) +
+  geom_point() +
+  facet_wrap("type")
+```
+
+- 方向：正相关vs负相关
+
+
+```{r}
+#| echo: false
+x = rnorm(100)
+y1 = 2*x + rnorm(100)
+y2 = -2*x + rnorm(100)
+dat <- data.frame(
+  x = c(x,x),
+  y = c(y1,y2),
+  type = c(rep("positive",100), rep("negative",100)))
+ggplot(dat, aes(x, y)) +
+  geom_point() +
+  facet_wrap("type")
+```
+
+- 程度：强相关vs弱相关
+
+```{r}
+#| echo: false
+x = rnorm(1000)
+y1 = 2*x + rnorm(1000)
+y2 = 2*x + rnorm(1000, 0, 3)
+y3 = 3*rnorm(1000)
+dat <- data.frame(
+  x = c(x,x,x),
+  y = c(y1,y2,y3),
+  type = c(rep("strong",1000), rep("weak",1000), rep("zero",1000)))
+ggplot(dat, aes(x, y)) +
+  geom_point() +
+  facet_wrap("type") +
+  theme(aspect.ratio = 1)
+```
+
+## 皮尔逊相关系数
+
+皮尔逊相关系数的公式：
+
+\begin{align}
+SS_X &= \sum{(X-\bar{X})^2} \\
+S_X^2 &= \frac{SS_X}{n-1} \\
+Cov(X,Y) &= \frac{\sum(X-\bar{X})(Y-\bar{Y})}{n-1} \\
+r_{XY} &= \frac{Cov(X,Y)}{S_XS_Y}
+\end{align}
+
+## 皮尔逊相关分析的显著性检验
+
+一般使用t检验对相关系数的显著性进行检验。
+
+提出假设：
+
+- H0: X与Y不相关（即，X与Y的相关为0）。
+- H1: X与Y相关（即，X与Y的相关不为0）。
+
+皮尔逊相关系数的显著性检验本质上是将样本的相关系数r与虚无假设的0进行比较。
+
+皮尔逊相关系数t检验中的标准误：
+
+\begin{align}
+SE &= \sqrt{\frac{1-r^2}{n-2}} \\
+t &= \frac{r-0}{SE} \\
+&= \frac{r}{SE} 
+\end{align}
+
+:::{.callout-caution}
+相关系数的显著性只受样本量的影响，不受变量单位的影响。
+:::
+
+检验皮尔逊相关系数显著性的第二种方法是使用Fisher z转换，本文对此不作介绍。
+
+## 皮尔逊相关分析
+
+三种应对方式与抑郁的相关。
+
+基于R base：
+
+```{r}
+vs <- c("cope_task1", "cope_task2", "cope_task3", 
+        "cope_emo1", "cope_emo2", "cope_emo3", 
+        "cope_avo1", "cope_avo2", "cope_avo3", 
+        "depr1", "depr2", "depr3")
+round(cov(depress[vs]), 2)
+round(cor(depress[vs]), 2)
+cor.test(depress$cope_task1, depress$depr1)
+```
+
+基于`psych`程序包作相关矩阵热力图：
+
+```r
+corPlot(depress[vs])
+```
+
+```{r}
+#| include: false
+png("cors.png", 1000, 1000, res = 150)
+corPlot(depress[vs])
+dev.off()
+```
+
+![相关矩阵热力图](/codes/correlation/cors.png)
+
+基于`psych`程序包进行相关分析：
+
+```{r}
+# test
+out <- corr.test(depress[vs])
+out
+# 查看相关分析的结果里面有哪些内容
+names(out)
+# 调用查看out中的stars
+out$stars
+# 当数据有缺失值时，使用FIML处理缺失值，然后计算相关系数
+round(corFiml(depress[vs]), 2)
+```
+
+使用Keng程序包计算r的临界值：
+
+```{r}
+# 样本量
+nrow(depress)
+# 计算r的临界值
+cut_r(n = 94)
+```
+
+基于上面计算得到的临界值，我们可以对任意一个相关系数的显著性水平做出判断。例如，r = 0.234，0.243介于0.2027627与0.2644668之间，因此可以得出，对于r = 0.234，其p值小于0.05、大于0.01。
+
+全文到此结束。

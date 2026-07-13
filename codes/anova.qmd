@@ -1,0 +1,837 @@
+---
+title: "方差分析"
+subtitle: "ANOVA"
+author: "Qingyao Zhang"
+format: 
+  html: default
+  # pdf: 
+  #   pdf-engine: xelatex
+  #   CJKmainfont: "HarmonyOS Sans SC"
+  #   lang: zh
+  #   toc: true
+  #   css: styles.css
+  #   date: last-modified
+  #   number-sections: true
+  #   code-line-numbers: true
+  #   tbl-cap-location: top
+  #   link-external-newwindow: true
+draft:
+  true
+---
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(afex)
+library(emmeans)
+library(effectsize)
+library(Keng)
+data("well")
+data("depress")
+```
+
+## 变量得分通过[比较]{.text-primary}获得意义
+
+变量得分本身没有意义，变量得分通过[比较]{.text-primary}获得意义。例如，张三英语成绩为98，我们无法判断张三的英语成绩是好还是差。但是，如果我们将张三的英语成绩与李四的英语成绩90进行比较，我们就可以得出判断：张三的英语成绩比李四好。
+
+比较的方式有两种：一是通过作差得到差值，二是通过作比得到比值。以`depress`数据为例，我们可以通过作差比较第一次调查中男生、女生抑郁得分的均值的差异。
+
+```{r}
+# 两个独立组
+well_girl <- well[well$gender100 == 0, ]
+well_boy <- well[well$gender100 == 1, ]
+# 均值
+M_girl <- mean(well_girl$flourish1)
+M_boy <- mean(well_boy$flourish1)
+# 做差
+M_girl - M_boy
+# 作比
+M_girl/M_boy
+```
+
+对于差值:
+
+1. 如果差值大于0，那么M_girl > M_boy。
+2. 如果差值小于0，那么M_girl < M_boy。
+3. 如果差值等于0，那么M_girl = M_boy。
+
+对于比值，当M_girl与M_boy都是正数时：
+
+1. 如果比值大于1，那么M_girl > M_boy。
+2. 如果比值小于1，那么M_girl < M_boy。
+3. 如果比值等于1，那么M_girl = M_boy。
+
+如果M_girl与M_boy中有负数，比值的解释更为复杂。
+
+下文我们将要介绍方差分析。方差分析就是通过作比对两个方差的大小进行比较。两个方差的比值是统计量F。对F的解释关键在于比较F与1的大小：
+
+1. F大于1表明分子上的方差大于分母上的方差。
+2. F小于1表明分子上的方差小于分母上的方差。
+3. F等于1表明分子上的方差等于分母上的方差。
+
+## 比较方差的大小
+
+独立样本t检验需要考虑两组独立样本的方差是否相等（即方差齐性假定）。如果两组方差相等，`t.test()`的参数应设置为`var.equal = TRUE`，如果两组方差不相等，`t.test()`的参数应设置为`var.equal = FALSE`。以W研究第1次调查的数据为例，我们可以通过作比对男生、女生实现论幸福感的方差进行比较。统计中通常约定较大方差放在分子上，较小的方差放在分母上。
+
+```{r}
+# 方差
+var_girl <- var(well_girl$flourish1)
+var_boy <- var(well_boy$flourish1)
+# 样本量
+n_girl <- nrow(well_girl)
+n_boy <- nrow(well_boy)
+# 自由度
+(df_girl = n_girl - 1)
+(df_boy = n_boy - 1)
+# 比值F
+F <- var_girl/var_boy
+F
+```
+
+可见，F = 1.07。从表面来看，F > 1，女生的方差大于男生的方法。但是，推断统计旨在用样本的情况推断总体的情况。就总体的情况而言，F的取值随抽样的变化而变化，F的取值在一个范围内波动。与均值的抽样分布类似，F同样有自己的抽样分布。以上例为例，女生组与男生组的样本量分别为`r n_girl`、`r n_boy`。F的抽样分布受到F的分子与分母上的方差的自由度的影响。在上例中，F分子上方差的自由度为df1 = df_girl，分母上方差的自由度为df2 = df_boy，F的抽样分布如下：
+
+```{r}
+dat_plot <- data.frame(
+  F = seq(0, 3, 0.001),
+  density = df(seq(0, 3, 0.001), df_girl, df_boy))
+dat_tail <- dat_plot[dat_plot$F >= qf(0.95, df_girl, df_boy), ]
+dat_vline <- data.frame(
+  xintercept = c(1, 1.07),
+  color = factor(c(1, 1.07))
+)
+ggplot(dat_plot, aes(F, density)) +
+  geom_path() +
+  geom_vline(aes(xintercept = xintercept, color = color), data = dat_vline) +
+  geom_text(aes(x = xintercept, label = xintercept), data = dat_vline, y = 0, angle = 90, hjust = 0) +
+  geom_area(data = dat_tail, fill = "pink", alpha = 0.5) +
+  theme_classic()
+```
+
+F检验就是将F放在F的抽样分布中，判断F偏离1的程度，如果F落在尾端5%的区域，我们就认为F不等于1。在上图中，绿色直线标明了F=1的位置，红色直线标明了F在统计上达到显著(p < 0.05)的临界值F = 1.784。当F(40, 52) > 1.78时，F等于1的概率小于0.05，因此我们得出结论F在统计上大于1，女生的方差大于男生的方差。为了准确衡量F偏离1的程度，我们可以通过`pf()`计算F的精确尾部概率。与z检验、t检验不同，F检验关注右侧单尾概率。
+
+```{r}
+(p_one_tail <- pf(F, df_girl, df_boy, lower.tail = FALSE))
+```
+
+若要计算双尾概率，只需将上述单尾概率乘以2。
+
+```{r}
+(p_two_tail <- p_one_tail*2)
+```
+
+我们可以通过R中的`var.test()`检验方差齐性，`var.test()`的检验结果与前文双尾检验的结果完全一致：
+
+```{r}
+var.test(well_boy$flourish1, well_girl$flourish1, ratio = 1)
+```
+
+因此，在本例中，女生的方差与男生的方差没有显著差异，即，满足方差齐性假定，函数`t.test()`的`var.equal`参数的值可以设置为`TRUE`。
+
+## F分布
+
+由于样本量与自由度的变化，F分布的形状也会发生变化。F分布的变化如下：
+
+```{r}
+F <- seq(0, 5, 0.001)
+# 变化分子自由度
+dat_df <- data.frame(
+  F,
+  df_3_3 = df(F, 3, 3),
+  df_10_3 = df(F, 10, 3),
+  df_30_3 = df(F, 30, 3),
+  df_100_3 = df(F, 100, 3)
+) %>%
+  pivot_longer(
+    cols = starts_with("df_"),
+    names_to = "dfs",
+    names_prefix = "df_",
+    values_to = "density"
+  ) %>%
+  mutate(dfs = factor(
+    str_replace(dfs, "_", ","), 
+    levels = c("3,3", "10,3", "30,3", "100,3")))
+ggplot(dat_df, aes(F, density, color = dfs)) +
+  geom_path() +
+  geom_vline(xintercept = 1, color = "gold") +
+  scale_x_continuous(breaks = seq(0, 5, 1))
+
+# 变化分母自由度
+dat_df <- data.frame(
+  F,
+  df_3_3 = df(F, 3, 3),
+  df_3_10 = df(F, 3, 10),
+  df_3_30 = df(F, 3, 30),
+  df_3_100 = df(F, 3, 100)
+) %>%
+  pivot_longer(
+    cols = starts_with("df_"),
+    names_to = "dfs",
+    names_prefix = "df_",
+    values_to = "density"
+  ) %>%
+  mutate(dfs = factor(
+    str_replace(dfs, "_", ","),
+    levels = c("3,3", "3,10", "3,30", "3,100")))
+ggplot(dat_df, aes(F, density, color = dfs)) +
+  geom_path() +
+  geom_vline(xintercept = 1, color = "gold") +
+  scale_x_continuous(breaks = seq(0, 5, 1))
+# 同时变化分子与分母自由度
+dat_df <- data.frame(
+  F,
+  df_3_3 = df(F, 3, 3),
+  df_10_10 = df(F, 10, 10),
+  df_30_30 = df(F, 30, 30),
+  df_100_100 = df(F, 100, 100)
+) %>%
+  pivot_longer(
+    cols = starts_with("df_"),
+    names_to = "dfs",
+    names_prefix = "df_",
+    values_to = "Density"
+  ) %>%
+  mutate(dfs = factor(
+    str_replace(dfs, "_", ","),
+    levels = c("3,3", "10,10", "30,30", "100,100")))
+ggplot(dat_df, aes(F, Density, color = dfs)) +
+  geom_path() +
+  geom_vline(xintercept = 1, color = "gold") +
+  scale_x_continuous(breaks = seq(0, 5, 1))
+```
+
+## 被试间单因素方差分析
+
+以`well`数据为例，`well`对三个年级进行了三次调查。我们的问题是：在第1次调查中，三个年级的实现论幸福感水平是否具有显著差异？这个问题的实质是：实现论幸福感水平的三个年级均值之间是否具有显著差异？实现论幸福感水平的三个年级均值如下：
+
+```{r}
+well |>  
+  group_by(grade100) |>  
+  summarise(M_flourish1  = mean(flourish1))
+```
+
+三个年级的抑郁水平具有显著差异意味着什么？意味着**从整体上来看**，抑郁水平的三个年级均值是不同的。只要任意两个班级之间的均值不相同，那么，我们就可以下结论：三个年级的抑郁水平具有显著差异。
+
+根据我们之前学习的t检验，我们可以通过独立样本t检验对三个均值进行两两比较。然而，每做一次t检验，我们就会犯一次一类错误。如果只需要作一次统计检验就能回答上述问题，那么我们犯一类错误的概率就不必增大。方差分析即可满足此目的。
+
+### 对方差分析的理解
+
+方差分析就是对方差的分析。方差分析首先将方差分解为几个部分。在下图中，横坐标为年级，纵坐标flourish1为第1次调查中实现论幸福感的得分。图中圆点表示每个学生的抑郁得分，图中菱形表示相应年级的抑郁的均值（组内均值，group mean），黑色水平直线表示整个样本的均值（grand mean）。
+
+```{r}
+# factor class
+well$grade <- factor(well$grade100)
+# grand mean
+M_grand <- mean(well$flourish1)
+# group mean
+dat_Ms <- well |>  
+  group_by(grade) %>% 
+  summarise(M_flourish1 = mean(flourish1))
+# plot
+ggplot(well, aes(grade, flourish1, color = grade)) +
+  geom_point() +
+  geom_point(aes(y = M_flourish1, fill = grade), 
+             data = dat_Ms, 
+             shape = 23, 
+             size = 4) +
+  geom_hline(yintercept = M_grand) +
+  scale_y_continuous(breaks = c(1:7, 5.32)) +
+  theme(panel.grid.minor = element_blank())
+```
+
+从个体的角度来看，一个学生的得分与整体均值的差值可以分解为两部分：(1)一个学生的得分与班级均值的差值——同一班级内一个圆点与菱形的距离，(2)班级均值与整体均值的差值——菱形与水平直线的距离。
+
+从整体的角度来看，整个样本(含三个年级)的变异可以分解为两部分：(1)班级内部每个学生的得分围绕班级均值的变异，(2)三个年级的均值围绕整体均值的变异。
+
+差值有正负号，但是**平方和**与**方差**没有正负号。平方和与方差简化了对变异的计算。在方差分析中，我们将方差称为均方，均方是平方和的均值。下面是平方和(sum of square)SS与均方(mean square)的公式：
+
+\begin{gather}
+SS = \sum(X-\bar{X})^2\\
+df = n - 1\\
+MS = \frac{SS}{df}
+\end{gather}
+
+根据上面的公式，我们可以计算：
+
+1. 整体平方和SS~total~、整体自由度df~total~、整体均方MS~total~。
+2. 组内平方和SS~within~、组内自由度df~within~、组内均方MS~within~。组内平方和是三个年级的平方和的和，组内自由度是三个年级的自由度的和。
+3. 组间平方和SS~between~、组间自由度df~between~、组间均方MS~between~。组间平方和是三个年级均值的加权平方和，组间自由度是三个年级均值的自由度。
+
+并且它们之间有如下关系：
+
+SS~total~ = SS~between~ + SS~within~
+
+df~total~ = df~between~ + df~within~
+
+SS的公式如下。X的下标i表示被试的编号，j表示组的编号，G表示grand，即样本整体。$n_j$表示j组的样本量。
+
+\begin{align}
+SS_{total} &= \sum{(X_{ij}-\bar{X}_G)^2} \\
+SS_{between} &= \sum{n_j(\bar{X}_{j}-\bar{X}_G)^2} \\
+SS_{within} &= \sum{(X_{ij}-\bar{X}_j)^2}
+\end{align}
+
+自由度的公式如下。N表示样本整体的样本量，k表示组的数量。
+
+\begin{align}
+df_{total} &=   N - 1 \\
+df_{between} &= k - 1 \\
+df_{within} &= N - k
+\end{align}
+
+均方的公式如下：
+
+\begin{align}
+MS_{total} &= \frac{SS_{total}}{df_{total}} \\
+MS_{between} &= \frac{SS_{between}}{df_{between}} \\
+MS_{within} &= \frac{SS_{within}}{df_{within}}
+\end{align}
+
+在计算时，一般先计算SS，再计算df，最后计算MS：
+
+```{r}
+# 组
+dat1 <- well$flourish1[well$grade100 == 1]
+dat2 <- well$flourish1[well$grade100 == 2]
+dat3 <- well$flourish1[well$grade100 == 3]
+
+# 组数
+k <- 3
+
+# 均值与样本量
+table(well$grade100)
+
+M1 <- mean(dat1, na.rm = TRUE)
+M2 <- mean(dat2, na.rm = TRUE)
+M3 <- mean(dat3, na.rm = TRUE)
+
+N <- nrow(well)
+
+n1 <- length(dat1)
+n2 <- length(dat2)
+n3 <- length(dat3)
+
+# 整体
+SS_total <- sum((well$flourish1-M_grand)^2)
+df_total <- N - 1
+MS_total <- SS_total/df_total
+
+# 组间
+SS_between <- sum(
+  n1*((M1-M_grand)^2),
+  n2*((M2-M_grand)^2),
+  n3*((M3-M_grand)^2)
+)
+df_between <- k - 1
+MS_between <- SS_between/df_between
+
+# 组内
+df1 <- n1 - 1
+df2 <- n2 - 1
+df3 <- n3 - 1
+
+SS_within <- sum((dat1-M1)^2,
+   (dat2-M2)^2,
+   (dat3-M3)^2)
+
+df_within <- N - k
+
+MS_within <- SS_within/df_within
+
+# 检验平方和与自由度
+all.equal(SS_total - SS_between, SS_within)
+all.equal(df1 + df2 + df3, df_within)
+```
+
+### 方差分析的统计检验
+
+回顾我们的研究问题，我们关心的是**三个年级均值之间的差异**。在前文所述MS中，谁反映了**三个年级均值之间的差异**？显然是组间MS。影响组间MS大小的原因有哪些？影响组间MS大小的原因有两方面：一是班级层面的因素，例如：班主任的教学风格，班级的学业水平，班级氛围……另一方面是个体差异。各个班级所包含的学生是不同的，即使各个班级在班主任、学业水平、班级氛围等班级层面的因素完全一致，由于学生的个体差异不同，三个年级均值仍然可能不相等。我们关心的是**三个年级均值之间的差异**，此时，学生的个体差异被视为随机误差。在概念上，我们可以对MS~between~进行如下拆解：
+
+$$
+MS_{between} = MS_{effect} + MS_{error}
+$$
+
+MS~effect~反映了**三个年级平均水平之间的真实的变异**。注意，MS~effect~在理论上存在，但无法直接计算出来。既然MS~effect~反映了三个年级平均水平之间的真实的变异，我们如何判定这种真实的变异真的存在呢？若MS~between~ > MS~error~，那么，MS~effect~ > 0。我们可以通过比值比较MS~between~与MS~error~的大小，这就是方差分析的统计检验，即F检验：
+
+$$
+F = \frac{MS_{between}}{MS_{error}}
+$$
+
+MS~error~应当如何计算呢？我们可以用MS~within~代替(推断)。在概念上，MS~error~等价于MS~within~。MS~within~反映的是班级内学生的得分与班级均值的差异，同一个班级内的学生在班级层面的因素上完全一致(例如：同样的班主任，同样的班级氛围……)，MS~within~反映了班级内学生个体差异导致的随机误差。我们使用MS~within~代替MS~error~，那么，
+
+\begin{align}
+F &= \frac{MS_{between}}{MS_{within}} \\
+df1 &= df_{between} \\
+df2 &= df_{within}
+\end{align}
+
+**实际工作中经常用MS~residual~指代MS~error~与MS~within~。**
+
+以well中三个年级幸福感水平的差异为例，F检验如下
+
+```{r}
+F <- MS_between/MS_within
+# 单尾p值
+p <- pf(F, df_between, df_within, lower.tail = FALSE)
+F
+p
+```
+
+我们可以使用R中的函数`aov()`进行上述方差分析。在进行方差分析之前，首先需要将变量`grade100`转化为类别变量。否则，R会将`grade100`当做连续变量来分析，其统计结果也将是错误的。
+
+```{r}
+well$grade100 <- factor(well$grade100)
+out_aov <- aov(flourish1 ~ grade100, well)
+summary(out_aov)
+```
+
+推荐使用`afex`程序包中的`aov_ez()`或`aov_car()`进行方差分析：
+
+```{r}
+library(afex)
+# aov_ez()直接指定变量
+aov_ez(id = "id",
+       dv  = "flourish1",
+       data = well,
+       between = "grade100")
+
+# aov_car()使用formula表示变量间关系，
+# ~ 左侧为结果变量，
+# ~ 右侧为自变量，
+# Error()必须包含在formula中，id是数据中表示被试编号的变量。
+out <- aov_car(formula = flourish1 ~ grade100 + Error(id),
+       data = well)
+out
+```
+
+经比较，函数`aov()`、程序包`afex`方差分析的结果与前文完全一致。
+
+在上述结果中，ges表示效应量generalized eta-squared。我们可以使用`afex`中的`anova()`输出效应量partial eta-squared。
+
+```{r}
+anova(out, es = "pes")
+```
+
+### 方差分析的事后比较
+
+方差分析回答了“三个年级的均值整体上是否有差异”这一问题，假设三个年级整体上差异显著，我们仍不清楚三个年级两两之间的差异情况。当方差分析的F检验表明各组均值整体上[存在]{.text-warning}显著差异之后，我们需要进行事后比较，以了解到底是哪些组之间存在差异。当方差分析的F检验表明各组均值整体上[不存在]{.text-warning}显著差异之后，我们不需要进行事后比较。
+
+由于前文的F检验结果显示三个年级的抑郁水平整体上不存在显著差异，因此，我们不需要进行事后比较。但出于教学演示的目的，下面我们继续对depr1的班级差异进行事后比较。我们使用`emmeans`程序包进行事后比较。事后比较需要进行多次两两比较，这会导致一类误差增大，因此，事后比较需要对p值进行校正。校正的方法有多种("tukey",  "scheffe", "sidak", "bonferroni", "dunnettx", "mvt", "none")，可参考R文档中对`adjust`参数的介绍(在Console中运行`?summary.emmGrid`)。
+
+```{r}
+library(emmeans)
+# 这里specs参数使用formula指定自变量\因素
+emmeans_out <- emmeans(object = out,
+                       specs = ~ grade100)
+pairs(emmeans_out, adjust = "none") # 不进行校正
+pairs(emmeans_out, adjust = "bonferroni")
+pairs(emmeans_out) # "tukey" as default
+```
+
+### 方差分析的效应量
+
+方差分析一般使用$\eta^2$或$\eta_{partial}^2$衡量效应量的大小，这两个效应量考研会考。$\eta_{partial}^2$更为常用。$\eta^2$或$\eta_{partial}^2$的公式如下：
+
+\begin{align}
+\eta^2 &= \frac{SS_{effect}}{SS_{total}} \\
+\eta_{partial}^2 &= \frac{SS_{effect}}{SS_{effect} + SS_{error}}
+\end{align}
+
+我们可以使用`effectsize`中的`eta_squared()`计算上述效应量：
+
+```{r}
+library(effectsize)
+# Eta squared
+eta_squared(out)
+# Eta partial squared
+eta_squared(out, partial = TRUE)
+```
+
+## 被试间多因素方差分析
+
+前文考察了三个年级的抑郁水平的差异，自变量只有1个分类变量，且该自变量为被试间因素，因此这类方差分析称为单因素被试间方差分析。被试间多因素方差分析指的是自变量有两个及以上分类变量，且自变量都是被试间因素。例如，我们考察：班级、性别两个因素对抑郁的影响。
+
+以班级、性别两个因素对抑郁的影响为例，由于自变量有两个，因此，我们可以单独考察班级的效应，即，班级的**主效应**。我们可以单独考察性别的作用，即，性别的主效应。同时，我们也可以考察班级、性别的交互效应。[交互效应并不是班级与性别的相互作用]{.text-warning}。**交互效应指的是：在自变量B的不同水平上，自变量A对结果变量Y的效应是不同的；或者，在自变量A的不同水平上，自变量B对结果变量Y的效应是不同的。**简言之，交互效应是“差异的差异”。
+
+什么是效应？均值的差异就是效应。下面我们计算在班级的不同水平上性别的效应，即在[班级的不同水平上]{.text-primary}[不同性别的差异]{.text-danger}。
+
+```{r}
+library(tidyr)
+depress %>% 
+  group_by(class, gender) %>% 
+  summarise(mean_depr1 = mean(depr1)) %>% 
+  pivot_wider(names_from = gender,
+              names_prefix = "gender",
+              values_from = mean_depr1) %>% 
+  mutate(d = gender1 - gender2)
+```
+
+在上面的表格中，4个d反映了在class的不同水平上性别的效应(差异)。但是，我们可以发现，4个d表现看上去是不同的，这表明班级与性别之间可能存在交互效应。
+
+与单因素被试间方差分析相比，被试间多因素方差分析的复杂体现在对交互效应的计算上。多因素方差分析中SS、MS、df之间的关系如下，这是考研的重点。在下面的公式中，F~A~检验了因素A的主效应，F~B~检验了因素B的主效应，F~A\*B~检验了因素A与因素B的交互效应。
+
+\begin{align}
+SS_{total} &= SS_A + SS_B + SS_{A*B} + SS_{within} \\
+df_{total} &= df_A + df_B + df_{A*B} + df_{within} \\
+df_{total} &= N - 1 \\
+df_A &= k_A - 1 \\
+df_B &= k_B - 1 \\
+df_{A*B} &= (k_A - 1)(k_B - 1) \\
+df_{within} &= N - k_A * k_B \\
+MS_{A} &= \frac{SS_A}{df_A} \\
+MS_{B} &= \frac{SS_B}{df_B} \\
+MS_{A*B} &= \frac{SS_{A*B}}{df_{A*B}} \\
+MS_{within} &= \frac{SS_{within}}{df_{within}} \\
+F_A &= \frac{MS_A}{MS_{within}} \\
+F_B &= \frac{MS_B}{MS_{within}} \\
+F_{A*B} &= \frac{MS_{A*B}}{MS_{within}}
+\end{align}
+
+SS~A\*B~不易计算，我们可以使用简便算法：
+
+$$
+SS_{A*B} = SS_{total} - SS_A - SS_B - SS_{within}
+$$
+
+当然，现实工作中，R语言可以帮助我们执行繁复的计算任务。下面的代码使用参数formula表达变量间的关系，`formula = depr1 ~ class*gender + Error(id)`，我们假定`class`与`gender`存在交互效应，因此`~`右侧的自变量写为`class*gender`，如此一来，aov_car()将同时检验`class`、`gender`的主效应与交互效应。
+
+```{r}
+out <- aov_car(formula = depr1 ~ class*gender + Error(id), depress)
+out
+```
+
+若想获得完整的平方和、均方等信息，使用`$`提取：
+
+```{r}
+out$Anova
+```
+
+上述结果表明，`class`、`gender`的交互效应不显著。因此，我们可以将`class`、`gender`的交互效应去掉，方法是将formula参数改为`formula = depr1 ~ class + gender + Error(id)`。
+
+
+```{r}
+out <- aov_car(formula = depr1 ~ class + gender + Error(id), depress)
+out$Anova
+```
+
+注意，去掉class与gender的交互效应后，Residuals的平方和增大了。事实上，交互效应的加入会改变对自变量效应显著性的检验。
+
+### 被试间多因素方差分析的效应量
+
+方法同前文：
+
+```{r}
+eta_squared(out)
+eta_squared(out, partial = FALSE)
+```
+
+### 被试间多因素方差分析的事后比较
+
+方法与前文类似：
+
+```{r}
+out <- aov_car(formula = depr1 ~ class*gender + Error(id), depress)
+# compare class
+emmeans_out <- emmeans(object = out,
+                       specs = ~ class)
+pairs(emmeans_out) # "tukey" as default
+# compare gender
+emmeans_out <- emmeans(object = out,
+                       specs = ~ gender)
+pairs(emmeans_out) # "tukey" as default
+```
+
+### 被试间多因素方差分析的简单效应分析
+
+交互效应显著表明在因素A的不同水平上，因素B的效应不同。B在因素A的某个水平上的效应被称为简单效应。在因素A的不同水平上，因素B的简单效应究竟有何种不同？我们需要对这些简单效应逐一进行检验，查看这些简单效应的显著性与方向，这就是简单效应分析。
+
+在本例中，交互效应不显著，因此我们不需要进行简单效应分析。但出于教学演示的目的，本文继续进行简单效应分析。我们可以检验不同班级中的性别差异。在下面的代码中，使用`specs = ~ gender|class`指定了检验简单效应的方式，`~`右侧为自变量，右侧的自变量有两个：`gender`与`class`，同时`gender`与`class`用`|`，`|`读作by，`gender|class`意即检验gender在class不同水平上的简单效应。
+
+```{r}
+# compare gender
+emmeans_out <- emmeans(object = out,
+                       specs = ~ gender|class)
+pairs(emmeans_out) # "tukey" as default
+```
+
+`afex`程序包提供了非常漂亮的绘图功能，可以快捷的作出交互效应图。代码如下：
+
+```{r}
+afex_plot(out,
+          x = ~ gender,
+          trace = ~ class)
+```
+
+通过上图可以看出，**表面上**，5班、12班男生抑郁水平低于女生，3班、9班则相反。
+
+若对`afex_plot()`的绘图效果不满意，我们可以使用`return =  "data"`参数得到`afex_plot()`的绘图数据，然后自行作图：
+
+```{r}
+data_plot <- afex_plot(out,
+          x = ~ gender,
+          trace = ~ class,
+          return = "data")
+names(data_plot)
+data_plot$means
+head(data_plot$data)
+```
+
+## 被试内单因素方差分析
+
+被试内单因素方差分析所处理的情况是：自变量只有一个分类变量，且这个分类变量是被试内变量。例如，我们想要了解：三次调查中抑郁水平的差异。在这个问题中，自变量实际上是时间，我们可以将其表示为time1、time2、time3。同一名被试接受了三次调查，因此，时间是被试内变量。
+
+被试内方差分析中的SS的计算较复杂，我们的重点是掌握SS之间的关系。通过下表中的数据，我们理解被试内方差分析中平方和的分解方式：
+
+```{r}
+dat <- depress %>% 
+  slice_head(n = 6) %>% 
+  select(id, depr1, cope_task2, cope_task3) %>% 
+  mutate(mean_dm_123 = rowMeans(select(., c(depr1:cope_task3))))
+dat
+```
+
+上面的表格中，id为被试的编号，同一个被试的数据占一行，depr1、cope_task2、cope_task3为三次调查中抑郁的得分。在被试间设计中，一个被试只有一个数据点，与被试间设计不同，在被试内设计中，一个被试有多个数据点，因此，我们可以说：在被试内设计中，一个被试就是一个组，被试本身就是一个自变量，这个自变量叫participant，这个自变量有p个水平（p表示样本量，表示被试的人数）。同时，时间也是一个自变量，这个自变量叫time，这个自变量有t个水平。因此，被试内单因素方差分析可以看做“两因素方差分析”。被试内单因素方差分析的方差分解方式也与“两因素被试间方差分析”类似。
+
+在上表中，我们一共有N = p\*t个数据点，N个数据点之间的变异就是SS~total~，SS~total~的自由度为N - 1 = p\*t-1。
+
+在上表中，mean_dm_123为depr1、cope_task2、cope_task3的行内均值，是被试三次调查中抑郁得分的均值，反映了被试跨时间的平均水平。mean_dm_123的6个均值之间的变异反映了被试间的个体差异，即SS~participant~，SS~participant~的自由度为p - 1。
+
+我们同样可以计算depr1、cope_task2、cope_task3的列内均值：
+
+```{r}
+colMeans(dat[2:4], na.rm = TRUE)
+```
+
+可得，depr1、cope_task2、cope_task3的均值分别为1.600、1.800、1.875，它们代表了三次调查中抑郁得分的均值，反映了三次调查中被试的平均水平。这三个均值之间的变异反映了三个时间点之间的变异，即SS~time~，SS~time~的自由度为t - 1。
+
+那么，SS~residual~ = SS~total~ - SS~participant~ - SS~time~，SS~residual~反映了N个数据点中残留的不能被个体差异与时间解释的变异，也就是残差。与两因素被试间方差分析类比，SS~residual~实际上反映了被试与时间的交互效应，因此，SS~residual~的自由度为(p -1) \* (t - 1)。此时的SS~residual~并不等同于组内效应。
+
+按照常规的定义，一个被试不能被称为一个组。被试内单因素方差分析只有一个自变量time，按照自变量time的分类水平，我们的数据实际上被分为了3个组。每个组有自己的组内变异与平方和。每个组的自由度为p - 1，一共有3个组，因此总的组内自由度为(p - 1)\*t。组内平方和为三个组各自的组内平方和的和。根据组内平方和的计算公式，我们可以得出：组内平方和显然不包含time带来的被试内变异SS~time~，而是包含被试个体差异带来的SS~participant~。需要注意的是：组内平方和同时也包含了participant与time的交互效应。在本例中，交互效应指的是在不同的时间点，被试个体差异带来的效应(即平方和)是不同的，这意味着：尽管已经将time导致的抑郁得分的差异排除在外，三个时间点的抑郁均值仍然不相等。总而言之，SS~group~ = SS~participant~ + SS~residual~，df~group~ = df~participant~ + df~residual~ = (p - 1) + ((p -1) \* (t - 1)) = (p -1) \* t。
+
+\begin{align}
+SS_{total} &= SS_{time} + SS_{group} \\
+&= SS_{time} + SS_{participant} + SS_{time*participant} \\
+&= SS_{time} + SS_{participant} + SS_{residual} \\
+df_{total} &= df_{time} + df_{participant} + df_{time*participant} \\
+&= N - 1 \\
+&= p*t - 1 \\
+df_{time} &= t - 1 \\
+df_{participant} &= p - 1 \\
+df_{residual} &= df_{total} - df_{time} - df_{participant} \\
+&= (t - 1)(p - 1) \\
+df_{group} &= df_{total} - df_{time} \\
+&= df~participant~ + df~residual~ \\
+&= (p-1)*t \\
+MS_{time} &= \frac{SS_{time}}{df_{time}} \\
+MS_{participant} &= \frac{SS_{participant}}{df_{participant}} \\
+MS_{residual} &= \frac{SS_{residual}}{df_{residual}} \\
+F_{time} &= \frac{MS_{time}}{MS_{residual}} \\
+F_{participant} &= \frac{MS_{participant}}{MS_{residual}}
+\end{align}
+
+使用afex进行被试内方差分析之前，我们需要将数据从宽格式转换为长格式：
+
+```{r}
+# 数据格式
+depress_long <- depress %>% 
+  select(id, class, gender, depr1, cope_task2, cope_task3) %>% 
+  pivot_longer(cols = c(depr1, cope_task2, cope_task3),
+               names_to = "time",
+               names_prefix = "dm",
+               values_to = "dm")
+slice_head(depress_long, n = 9)
+```
+
+之后进行方差分析：
+
+```{r}
+out <- aov_car(
+  formula = dm ~ Error(id/time),
+  depress_long)
+print(out)
+```
+
+可见，F的自由度是小数，这是因为aov_car()对F的自由度进行了校正，校正的方法是：Sphericity correction method: GG。
+
+为何需要校正？被试内方差分析假定被试内因素多个水平两两之间的差值d的方差是相等的，这一假定被称为球形假定。在本例中，假定depr1与cope_task2的差值为d12，cope_task2与cope_task3的差值为d23，depr1与cope_task3的差值为d13，那么球性假定意味着d12的方差 = d23的方差 = d13的方差。
+
+使用`summary()`查看`aov_car()`的详细结果：
+
+```{r}
+summary(out, es = "pes")
+```
+
+上述结果中，Mauchly Tests for Sphericity报告了对球性假定的检验，结果显示p < 0.05，即球性假定不成立，因此需要对F的自由度进行校正。校正方法有两种：
+
+1. Greenhouse-Geisser Corrections，简称GG
+2. Huynh-Feldt Corrections，简称HC
+
+eps指的是Epsilon，即，校正因子。F检验的自由度F1、F2分别乘以eps，就得到校正后的自由度：
+
+```{r}
+# 校正自由度
+# df1
+2*0.81728
+# df2
+186*0.81728
+```
+
+### 被试内单因素方差分析的事后比较
+
+方法同上：
+
+```{r}
+emmeans_out <- emmeans(object = out,
+                       specs = ~ time)
+pairs(emmeans_out) # "tukey" as default
+```
+
+### 被试内单因素方差分析的效应量
+
+方法同上：
+
+```{r}
+# Eta squared
+eta_squared(out)
+# Eta partial squared
+eta_squared(out, partial = TRUE)
+```
+
+## 被试内多因素方差分析
+
+在本例中，我们可以考察三次调查中问题应对、情绪应对的均值的差异。
+
+在进行方差分析之前，我们首先需要整理数据，代码如下：
+
+```{r}
+# 数据格式
+depress_long <- depress %>% 
+  select(id, class, gender, cope_task1, cope_task2, cope_task3, cope_emo1, cope_emo2, cope_emo3) %>% 
+  pivot_longer(cols = c(cope_task1, cope_task2, cope_task3, cope_emo1, cope_emo2, cope_emo3),
+               # 变量名存储到两列新的变量里
+               names_to = c("cope", "time"),
+               # 通过正则表达式将变量名拆解成两部分，
+               # 第1部分传递给cope，
+               # 第2部分传递给time
+               names_pattern = "(.*)([1-3])",
+               values_to = "value")
+slice_head(depress_long, n = 6)
+```
+
+之后进行方差分析：
+
+```{r}
+out <- aov_car(
+  formula = value ~ Error(id/cope*time),
+  depress_long)
+out
+summary(out)
+```
+
+### 被试内多因素方差分析的效应量
+
+```{r}
+eta_squared(out)
+eta_squared(out, partial = FALSE)
+```
+
+### 被试内多因素方差分析的事后比较
+
+方法同上：
+
+```{r}
+emmeans_out <- emmeans(object = out,
+                       specs = ~ time)
+pairs(emmeans_out) # "tukey" as default
+emmeans_out <- emmeans(object = out,
+                       specs = ~ cope)
+pairs(emmeans_out) # "tukey" as default
+```
+
+### 被试内多因素方差分析的简单效应分析
+
+```{r}
+# compare gender
+emmeans_out <- emmeans(object = out,
+                       specs = ~ cope|time)
+pairs(emmeans_out) # "tukey" as default
+```
+
+`afex`作交互效应图：
+
+```{r}
+afex_plot(out,
+          x = ~ cope,
+          trace = ~ time,
+          error = "within")
+```
+
+## 混合因素方差分析
+
+例如：考察不同性别三次调查中抑郁的差异。
+
+使用afex进行被试内方差分析之前，我们需要将数据从宽格式转换为长格式：
+
+```{r}
+# 数据格式
+depress_long <- depress %>% 
+  select(id, gender, depr1, cope_task2, cope_task3) %>% 
+  pivot_longer(cols = c(depr1, cope_task2, cope_task3),
+               names_to = "time",
+               names_prefix = "dm",
+               values_to = "value")
+slice_head(depress_long, n = 6)
+```
+
+之后进行方差分析：
+
+```{r}
+out <- aov_car(
+  formula = value ~ gender*time + Error(id/time),
+  depress_long)
+out
+summary(out)
+```
+
+### 混合因素方差分析的效应量
+
+例如：考察不同性别三次调查中抑郁的差异。
+
+```{r}
+eta_squared(out)
+eta_squared(out, partial = FALSE)
+```
+
+### 混合因素方差分析的事后比较
+
+方法同上：
+
+```{r}
+emmeans_out <- emmeans(object = out,
+                       specs = ~ time)
+pairs(emmeans_out) # "tukey" as default
+emmeans_out <- emmeans(object = out,
+                       specs = ~ gender)
+pairs(emmeans_out) # "tukey" as default
+```
+
+### 混合因素方差分析的简单效应分析
+
+```{r}
+# compare gender
+emmeans_out <- emmeans(object = out,
+                       specs = ~ gender|time)
+pairs(emmeans_out) # "tukey" as default
+```
+
+`afex`作交互效应图：
+
+```{r}
+afex_plot(out,
+          x = ~ gender,
+          trace = ~ time,
+          error = "none")
+```
+
+全文到此结束。

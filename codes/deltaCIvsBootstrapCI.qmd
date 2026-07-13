@@ -1,0 +1,196 @@
+---
+title: "区分delta置信区间与bootstrap置信区间"
+subtitle: "Delta CI vs. bootstrap CI"
+draft: true
+---
+
+我们可用两种方法检验统计量（e.g., 回归系数，中介效应）的显著性：delta method和bootstrap method。
+
+Delta method基于对取样分布（sampling distribution）的假定，通过公式计算统计量的标准误，然后利用标准误对中介效应进行单样本t检验（或单样本z检验）。利用delta method估计得到的标准误，我们也可以计算统计量的95%置信区间。例如：[coefficient - *t* \**SE*, coefficient + *t* \**SE*]，其中*t* 为*p* = 0.05时*t*的临界值。本文将该置信区间简称为delta置信区间。通过公式可知，delta置信区间具有对称性，置信区间的下限（Lower Limit）、上限（Upper Limit）与统计量的距离相等，都是*t* \**SE*。另外，由于*SE*是通过公式计算得到的，因此delta置信区间是不变的。
+
+Bootstrap method不对抽样分布作假定，Bootstrap method以自取样模拟从总体取样的过程，通过上千个bootstrap样本的统计量构成的取样分布直接计算中介效应的置信区间，我们称其为bootstrap置信区间。由于该置信区间是通过取样获得的，具有随机性，不会像delta method假定的那样表现出理想的对称性。即，bootstrap置信区间的下限、上限与统计量的距离不相等。另外，由于bootstrap置信区间是通过随机取样计算得到的，因此bootstrap置信区间具有随机性，每次随机抽取的样本不同，计算得到的bootstrap置信区间也不同。
+
+根据置信区间是否对称这一性质，我们可以判断PROCESS、Mplus输出的置信区间是delta置信区间还是bootstrap置信区间。我们以《SPSS for Windows在心理学与教育学中的应用》教材中的data7-03为例，将delta置信区间与bootstrap置信区间进行比较。下文将`#`作为注释符，对PROCESS输出的结果进行注释和解读。
+
+另外，读者可以自行采用PROCESS进行多次统计分析，然后将多次统计分析得到的置信区间进行比较，观察置信区间是否会发生变化。
+
+```
+Run MATRIX procedure: 
+ 
+*************** PROCESS Procedure for SPSS Version 4.2 beta *************** 
+ 
+          Written by Andrew F. Hayes, Ph.D.       www.afhayes.com 
+    Documentation available in Hayes (2022). www.guilford.com/p/hayes3 
+ 
+************************************************************************** 
+Model  : 4 
+    Y  : SuicideI 
+    X  : Poblemat 
+    M  : Loneline 
+ 
+Sample 
+Size:  732 
+ 
+************************************************************************** 
+OUTCOME VARIABLE: 
+ Loneline 
+ 
+Model Summary 
+          R       R-sq        MSE          F        df1        df2          p 
+      .1594      .0254    96.6540    19.0350     1.0000   730.0000      .0000 
+ 
+Model 
+              coeff         se          t          p       LLCI       ULCI 
+constant    35.5995     1.5430    23.0718      .0000    32.5703    38.6287
+```
+:::{.manjianghong}
+\# 这里的置信区间的下限与上限分别是32.5703与8.6287，截距（回归系数）为35.5995，
+
+\# 将置信区间的下限、上限与截距作差，得到其差值分别为3.0292、3.0292，表现出对称性。
+:::
+```
+Poblemat      .0741      .0170     4.3629      .0000      .0408      .1075 
+```
+:::{.manjianghong}
+\# 这里的置信区间的下限与上限分别是.0408与.1075，斜率为.0741，
+
+\# 将置信区间的下限、上限与斜率作差，得到其差值分别为0.0333、0.0334，
+
+\# 0.0333与0.0334相差0.0001，这是精度损失造成的。
+:::
+```
+Standardized coefficients 
+              coeff 
+Poblemat      .1594 
+ 
+************************************************************************** 
+OUTCOME VARIABLE: 
+ SuicideI 
+ 
+Model Summary 
+          R       R-sq        MSE          F        df1        df2          p 
+      .5705      .3254    10.7200   175.8464     2.0000   729.0000      .0000 
+ 
+Model 
+              coeff         se          t          p       LLCI       ULCI 
+constant    -5.5063      .6757    -8.1488      .0000    -6.8330    -4.1797 
+Poblemat      .0180      .0057     3.1442      .0017      .0068      .0293 
+Loneline      .2188      .0123    17.7504      .0000      .1946      .2430 
+ 
+Standardized coefficients 
+              coeff 
+Poblemat      .0969 
+Loneline      .5469 
+ 
+************************** TOTAL EFFECT MODEL **************************** 
+OUTCOME VARIABLE: 
+ SuicideI 
+ 
+Model Summary 
+          R       R-sq        MSE          F        df1        df2          p 
+      .1841      .0339    15.3322    25.6020     1.0000   730.0000      .0000 
+ 
+Model 
+              coeff         se          t          p       LLCI       ULCI 
+constant     2.2826      .6145     3.7143      .0002     1.0761     3.4891 
+Poblemat      .0342      .0068     5.0598      .0000      .0210      .0475 
+ 
+Standardized coefficients 
+              coeff 
+Poblemat      .1841 
+ 
+****************** CORRELATIONS BETWEEN MODEL RESIDUALS ****************** 
+ 
+           Loneline   SuicideI 
+Loneline     1.0000      .0000 
+SuicideI      .0000     1.0000 
+ 
+ 
+************** TOTAL, DIRECT, AND INDIRECT EFFECTS OF X ON Y ************** 
+ 
+Total effect of X on Y 
+     Effect         se          t          p       LLCI       ULCI       c_cs 
+      .0342      .0068     5.0598      .0000      .0210      .0475      .1841 
+ 
+Direct effect of X on Y 
+     Effect         se          t          p       LLCI       ULCI      c'_cs 
+      .0180      .0057     3.1442      .0017      .0068      .0293      .0969 
+ 
+Indirect effect(s) of X on Y: 
+             Effect     BootSE   BootLLCI   BootULCI 
+Loneline      .0162      .0040      .0082      .0239
+```
+:::{.manjianghong}
+\# 这里的置信区间的下限与上限分别是.0082与.0239，中介效应为.0162，
+
+\# 将置信区间的下限、上限与中介效应作差，得到其差值分别为0.008、0.0077，
+
+\# 0.008与0.0077相差0.0003，不对称。
+:::
+```
+Completely standardized indirect effect(s) of X on Y: 
+             Effect     BootSE   BootLLCI   BootULCI 
+Loneline      .0872      .0213      .0441      .1287 
+ 
+************************************************************************** 
+Bootstrap estimates were saved to a file 
+ 
+Map of column names to model coefficients: 
+          Conseqnt Antecdnt 
+ COL1     Loneline constant 
+ COL2     Loneline Poblemat 
+ COL3     SuicideI constant 
+ COL4     SuicideI Poblemat 
+ COL5     SuicideI Loneline 
+ 
+*********** BOOTSTRAP RESULTS FOR REGRESSION MODEL PARAMETERS ************ 
+ 
+OUTCOME VARIABLE: 
+ Loneline 
+ 
+              Coeff   BootMean     BootSE   BootLLCI   BootULCI 
+constant    35.5995    35.6343     1.6734    32.4302    39.0087 
+```
+:::{.manjianghong}
+\# 这里的置信区间的下限与上限分别是32.4302与39.0087，截距（回归系数）为35.5995，
+
+\# 将置信区间的下限、上限与截距作差，得到其差值分别为3.1693、3.4092，
+
+\# 3.1693与3.4092相差0.2399，不对称。
+:::
+```
+Poblemat      .0741      .0738      .0178      .0376      .1089 
+```
+:::{.manjianghong}
+\# 这里的置信区间的下限与上限分别是.0376与.1089，斜率为.0741，
+
+\# 将置信区间的下限、上限与斜率作差，得到其差值分别为0.0365、0.0348，
+
+\# 0.0365与0.0348相差0.0017，不对称。
+:::
+```
+---------- 
+ 
+OUTCOME VARIABLE: 
+ SuicideI 
+ 
+              Coeff   BootMean     BootSE   BootLLCI   BootULCI 
+constant    -5.5063    -5.4886      .6327    -6.7357    -4.2361 
+Poblemat      .0180      .0179      .0058      .0063      .0292 
+Loneline      .2188      .2186      .0131      .1929      .2444 
+ 
+*********************** ANALYSIS NOTES AND ERRORS ************************ 
+ 
+Level of confidence for all confidence intervals in output: 
+  95.0000 
+ 
+Number of bootstrap samples for percentile bootstrap confidence intervals: 
+  5000 
+ 
+WARNING: Variables names longer than eight characters can produce incorrect output 
+when some variables in the data file have the same first eight characters. Shorter 
+variable names are recommended. By using this output, you are accepting all risk 
+and consequences of interpreting or reporting results that may be incorrect. 
+ 
+------ END MATRIX -----
+```

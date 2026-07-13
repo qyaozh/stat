@@ -1,0 +1,583 @@
+---
+title: "中介模型"
+subtitle: "Mediation"
+author: "Qingyao Zhang"
+format: 
+  html: default
+  # pdf: 
+  #   pdf-engine: xelatex
+  #   CJKmainfont: "HarmonyOS Sans SC"
+  #   lang: zh
+  #   toc: true
+  #   css: styles.css
+  #   date: last-modified
+  #   number-sections: true
+  #   code-line-numbers: true
+  #   tbl-cap-location: top
+  #   link-external-newwindow: true
+knitr:
+  opts_chunk: 
+    collapse: true
+    comment: "##" 
+draft:
+  true
+---
+
+```{r}
+#| label: chunk1
+library(lavaan)
+data("depress", package = "Keng")
+library(ggplot2)
+```
+
+
+## 回归模型
+
+以depress数据为例，理论上，依恋焦虑(X)作为人格特征会影响个体的抑郁水平(Y)。
+
+### 模型图
+
+依恋焦虑(X)与抑郁水平(Y)的关系可以用下面的模型图表示：
+
+![简单回归](/codes/mediation/regression_simple.png){width=55%}
+
+在上图中，箭头的起点是原因，是自变量，箭头的终点是结果，是结果变量，箭头在概念上表示自变量对结果变量的效应。
+
+### 回归方程
+
+我们可以用回归分析检验依恋焦虑(X)与抑郁水平(Y)关系，上图中的箭头与回归分析中的回归系数c对应：
+
+$$
+Y = intercept + c*X
+$$
+
+### 模型估计
+
+我们通过lavaan程序包进行上述统计分析。lavaan需要3步：
+
+1. 通过字符串`""`界定统计模型，即界定变量间的关系。
+2. 通过`sem()`对统计模型进行拟合，对模型中的参数(例如：回归系数)进行估计。
+3. 通过`summary()`输出统计结果。
+
+具体代码如下。注意，在lavaan中，我们可以为回归系数指定标签，这相当于为回归系数起了一个名字。在下面的代码中，我们为attach_anx对depr1的回归系数指定标签c。
+
+```{r}
+#| label: chunk2
+# 界定模型
+model1 <- "
+  # 为attach_anx对depr1的回归系数指定标签c。
+  depr1 ~ c*attach_anx
+"
+# 拟合模型
+fit1 <- sem(
+  model = model1,
+  data = depress,
+  # 模型包含截距
+  meanstructure = TRUE
+)
+```
+
+```{r}
+#| eval: false
+# 输出结果
+summary(
+  fit1,
+  # 输出模型拟合指数
+  fit.measures = TRUE,
+  # 输出标准化的估计结果
+  standardized = TRUE,
+  # 输出R square
+  rsquare = TRUE
+)
+```
+
+上面的回归分析实际上是一个最简单的路径分析(path analysis)。在路径分析中，回归系数被称为路径系数。下面我们通过注释讲解`summary()`输出的结果：
+
+```r
+# lavaan进行了1次迭代即完成参数估计。需重点关注。
+## lavaan 0.6-21 ended normally after 1 iteration
+# 算法。该信息不重要。
+##   Estimator                                         ML
+# 参数收敛方法。该信息不重要。
+##   Optimization method                           NLMINB
+# 模型参数的数量。需重点关注。
+##   Number of model parameters                         3
+# 样本量。需重点关注。
+##                                                   Used       Total
+##   Number of observations                           174         185
+# 模型拟合程度的卡方检验。需重点关注。 
+## Model Test User Model:
+##                                                       
+##   Test statistic                                 0.000
+##   Degrees of freedom                                 0
+# 基线模型拟合程度的卡方检验。该信息不重要。
+## Model Test Baseline Model:
+## 
+##  Test statistic                                 2.591
+##  Degrees of freedom                                 1
+##  P-value                                        0.107
+# 模型拟合指数CFI、TLI，一般要求大于0.90
+## User Model versus Baseline Model:
+## 
+##   Comparative Fit Index (CFI)                    1.000
+##   Tucker-Lewis Index (TLI)                       1.000
+# 模型拟合指数似然值与信息准则指数AIC、BIC、SABIC，越小越好
+## Loglikelihood and Information Criteria:
+## 
+##  Loglikelihood user model (H0)                -75.688
+##  Loglikelihood unrestricted model (H1)        -75.688
+##                                                      
+##  Akaike (AIC)                                 157.376
+##  Bayesian (BIC)                               166.853
+##  Sample-size adjusted Bayesian (SABIC)        157.353
+# 模型拟合指数RMSEA，一般要求小于0.05 
+## Root Mean Square Error of Approximation:
+## 
+##   RMSEA                                          0.000
+##   90 Percent confidence interval - lower         0.000
+##   90 Percent confidence interval - upper         0.000
+##   P-value H_0: RMSEA <= 0.050                       NA
+##   P-value H_0: RMSEA >= 0.080                       NA
+# 模型拟合指数SRMR，一般要求小于0.05
+## Standardized Root Mean Square Residual:
+## 
+##   SRMR                                           0.000
+# 参数估计方法。该信息不重要。
+## Parameter Estimates:
+## 
+##   Standard errors                             Standard
+##   Information                                 Expected
+##   Information saturated (h1) model          Structured
+# 回归系数及其z检验。 
+# Std.lv为将潜变量进行标准化的估计结果，该信息不重要。
+# Std.all为将自变量、结果变量、潜变量进行标准化的估计结果。
+# Std.all包含了我们需要的标准化路径系数。
+## Regressions:
+##                    Estimate  Std.Err  z-value  P(>|z|)   Std.lv  Std.all
+# 输出结果也标明了attach_anx对depr1的回归系数的标签c
+##  depr1 ~                                                               
+##     attach_anx (c)    0.037    0.023    1.616    0.106    0.037    0.122
+# depr1的截距
+## Intercepts:
+##                    Estimate  Std.Err  z-value  P(>|z|)   Std.lv  Std.all
+##    .depr1             1.842    0.058   31.997    0.000    1.842    4.891
+# depr1的残差的方差, `.depr1`表示depr1的残差
+## Variances:
+##                    Estimate  Std.Err  z-value  P(>|z|)   Std.lv  Std.all
+##    .depr1             0.140    0.015    9.327    0.000    0.140    0.985
+# 以depr1为结果变量的回归方程的R-Square
+## R-Square:
+##                    Estimate
+##     depr1             0.015
+```
+
+上述结果表明，依恋焦虑对抑郁的效应是0.037，*p* = 0.106。
+
+## 中介模型
+
+依恋焦虑是如何影响抑郁的？理论上，依恋焦虑会影响个体的情绪应对，情绪应对继而会影响抑郁。换句话说，依恋焦虑会通过影响情绪应对间接地影响抑郁，情绪应对是依恋焦虑影响抑郁的路径、桥梁、机制，情绪应对是依恋焦虑与抑郁之间的中介。
+
+### 模型图
+
+依恋焦虑、情绪应对、抑郁的关系可以用下面的模型图表示：
+
+![简单中介](/codes/mediation/mediation_simple.png){width=55%}
+
+在上图中，X经过M影响Y，这构成了一条因果链。
+
+### 回归方程
+
+上面的模型图包含两个回归方程。一个是以M为结果变量的回归方程，另一个是以Y为结果变量的回归方程：
+
+\begin{align}
+M &= intercept + a*X \\
+Y &= intercept + b*M + c^{'}*X
+\end{align}
+
+::: callout-tip
+## 如何根据模型图写回归方程
+
+回归方程中的结果变量与自变量由箭头**直接**相连。
+
+1. 先确定结果变量，箭头所指为结果变量。结果变量的数量等于回归方程的数量。
+2. 再沿着箭头逆向回溯每个结果变量的自变量，箭头来源为自变量。
+:::
+
+### 直接效应、间接效应与总效应
+
+根据上面的模型图，依恋焦虑对抑郁的效应可以分成两部分：
+
+1. 依恋焦虑直接对抑郁产生的直接效应(direct effect)。
+2. 依恋焦虑经情绪应对方式对抑郁产生的间接效应(indirect effect)。
+
+自变量对结果变量的效应可以用回归系数来量化。那么，依恋焦虑对抑郁的直接效应与间接效应具体是多少？依恋焦虑对抑郁的直接效应为c'，c'为X的偏回归系数。依恋焦虑经情绪应对方式对抑郁的间接效应为回归系数a与b的乘积ab。如何理解间接效应？回归系数a是X对M的效应，X变化一个单位会导致M变化a个单位；回归系数b是M对Y的偏回归系数，M变化一个单位会导致Y变化b个单位；那么，X变化1个单位会通过M间接地导致Y变化几个单位呢？a\*b个单位，因此X经M影响Y的间接效应为a\*b。依恋焦虑对抑郁的总效应为直接效应与间接效应的和c'+a\*b。
+
+### 模型估计
+
+路径分析又被称为“同时回归分析”，意即，路径分析能够同时进行多个回归分析，因此，路径分析适合用来检验中介模型。下面我们通过lavaan检验上述中介模型。为了检验间接效应，我们在界定模型时除了界定两个回归方程，还需要：
+
+- 为回归系数a与b打标签；
+- 使用a与b定义一个新的统计量I表示间接效应；
+- 使用a、b、c'定义一个新的统计量T表示总效应。
+
+```{r}
+model2 <- "
+  cope_emo1 ~ a*attach_anx
+  # 为与c区分，我们在代码中用cc表示c'
+  depr1 ~ b*cope_emo1 + cc*attach_anx
+  # 间接效应
+  I := a*b
+  T := a*b + cc
+"
+# 拟合模型
+fit2 <- sem(
+  model = model2,
+  data = depress,
+  # 模型包含截距
+  meanstructure = TRUE
+)
+# 输出结果
+summary(
+  fit2,
+  # 输出模型拟合指数
+  fit.measures = TRUE,
+  # 输出标准化的估计结果
+  standardized = TRUE,
+  # 输出R square
+  rsquare = TRUE
+)
+```
+
+对于上述统计结果中的大部分内容，前文已作过解释，此处不再赘述。
+
+我们关心的问题是：依恋焦虑经情绪应对影响抑郁的机制真的存在吗？情绪应对在依恋焦虑与抑郁之间起中介作用吗？要回答上述问题，我们需要对间接效应的显著性进行检验？若间接效应显著，则证明间接效应不等于0，即间接效应是存在的，情绪应对在依恋焦虑与抑郁之间起中介作用。
+
+如何判断间接效应是否显著？最简单的方法是依次检验法，所谓依次检验法就是先看中介路径的前半路径a是否显著，再看中介路径的后半路径b是否显著，如果a与b都显著，就意味着a与b都不等于0，如果a与b都不等于0，那么a与b的乘积一定不等于0。从上面的结果可以看出，前半路径a不显著。到这里，我们是否可以得出结论“间接效应不显著”呢？不可以。依次检验法虽然简单，但是该方法统计检验力低。当a与b中有至少一个系数不显著时，我们不能直接下结论“间接效应不显著”，而是应当采用更可靠的方法进一步对间接效应进行检验。
+
+在上面的结果中，我们能够看到最后两行对I与T进行了z检验，这里的z检验被称为**delta检验**或者**sobel检验**。与依次检验法不同，delta检验并非对a与b两个系数分别作检验，而是对它们的乘积(也就是间接效应)直接进行检验。从lavaan的结果可以看出，I不显著，T不显著。到这里，我们是否可以得出结论“间接效应不显著”呢？不可以。研究表明，虽然**delta检验**的统计检验力高于依次检验法，但依然低于bootstrap法。
+
+### 通过bootstrap法检验间接效应
+
+什么是bootstrap法？简言之，bootstrap法是对真实抽样过程的模拟。显著性检验的本质是将统计量放在抽样分布中，继而判断统计量的极端程度。但是，现实情况是我们无法从总体中进行抽样。bootstrap法的逻辑就是用实际样本代替总体，从样本本身进行[有放回的]{.text-caution}取样。这种取样被称为自取样，bootstrap法也称为自举法。以depress数据为例，我们可以通过有放回的取样从depress数据中抽取1000个样本量为94的bootstrap样本，每个bootstrap样本都可以计算得到一个间接效应值I，我们总计将得到1000个间接效应估计值I，这1000个I就构成了I的bootstrap分布，我们用bootstrap分布近似的代替I的抽样分布。如此一来，我们就可以用bootstrap分布的95%置信区间判断实际间接效应I的显著性。该置信区间被称为bootstrap 95% 百分位置信区间。若I的bootstrap 95% 百分位置信区间**包含0**，那么I与0没有显著差异，即间接效应不显著；若I的bootstrap 95% 百分位置信区间**不包含0**，那么I与0没有显著差异，即间接效应显著。
+
+在检验间接效应的显著性时，我们并不需要手动进行bootstrap取样的过程，R语言可以自动完成这个过程，并将我们需要的bootstrap 95% 百分位置信区间告诉我们。若要在lavaan中使用bootstrap法检验间接效应，我们需要在`sem()`函数中指定参数`se = "boot"`，并指定bootstrap取样的次数(至少1000)，`bootstrap = 1000`。同时，为了能获知模型参数的置信区间，我们需要在`summary()`函数中指定参数`ci = TRUE`。
+
+```{r}
+#| eval: false
+fit3 <- sem(
+  model = model2,
+  data = depress,
+  # 模型包含截距
+  meanstructure = TRUE,
+  # 使用bootstrap方法计算标准误
+  se = "boot",
+  # 指定bootstrap取样的次数为1000
+  bootstrap = 1000,
+  # 通过并行计算加快计算，该参数可省略
+  parallel = "snow"
+)
+```
+
+```{r}
+#| include: false
+fit3 <- sem(
+  model = model2,
+  data = depress,
+  # 模型包含截距
+  meanstructure = TRUE,
+  # 使用bootstrap方法计算标准误
+  se = "boot",
+  # 指定bootstrap取样的次数为1000
+  bootstrap = 1000,
+  # 通过并行计算加快计算，该参数可省略
+  parallel = "snow"
+)
+```
+
+```{R}
+# 输出结果
+summary(
+  fit3,
+  # 简化输出
+  fit.measures = FALSE,
+  # 输出置信区间
+  ci = TRUE,
+  # 简化输出
+  standardized = FALSE,
+  # 简化输出
+  rsquare = FALSE
+)
+```
+
+上述结果表明，间接效应与总效应不显著，95% CI = [-0.012, 0.044]，95% CI = [-0.030, 0.094]。
+
+有些研究者建议使用偏差校正的bootstrap百分位置信区间，我们可以在`parameterEstimates()`中设置参数`boot.ci.type = "bca.simple"`来得到这种置信区间结果：
+
+```{r}
+parameterEstimates(
+  fit3,
+  zstat = FALSE,
+  pvalue = FALSE,
+  boot.ci.type = "bca.simple"
+)
+```
+
+上述结果表明，间接效应与总效应不显著，95% CI = [-0.008, 0.043]，95% CI = [-0.026, 0.094]。
+
+### bootstrap分布
+
+为了进一步理解bootstrap法，我们通过`bootstrapLavaan()`函数来演示bootstrap法的过程。在下面的代码中，`bootstrapLavaan()`函数从样本量为94的depress数据中进行有放回的取样，获取1000个样本量为94的bootstrap样本。每一个样本都可以对中介模型进行估计，得到自己的一套参数估计值，这些参数估计值存储在resamples中。
+
+```{r}
+resamples <- bootstrapLavaan(
+  fit3,
+  R = 1000L,
+  FUN = "coef",
+  parallel = "snow"
+)
+```
+
+接下来，我们计算中介效应I，我们将得到1000个bootstrap样本的1000个I。这1000个I就构成了I的bootstrap分布，这个分布基本上以实际样本的I的估计值0.015为中心。
+
+```{r}
+resamples <- as.data.frame(resamples)
+resamples$I <-  resamples$a*resamples$b
+ggplot(resamples, aes(I)) +
+  geom_histogram(fill = "wheat")
+```
+
+我们通过quantile()函数计算bootstrap分布的95%百分位置信区间：
+
+```{r}
+CI <- quantile(resamples$I, c(0.025, 0.975))
+CI
+```
+
+我们可以将实际样本的I的估计值与95%置信区间标注在上述分布图中：
+
+```{r}
+CI <- round(CI, 3)
+names(CI) <- NULL
+ggplot(resamples, aes(I)) +
+  geom_histogram(fill = "wheat") +
+  geom_vline(xintercept = 0.015) +
+  geom_vline(xintercept = CI, color = "brown") +
+  scale_x_continuous(breaks = c(CI, 0, 0.015))
+```
+
+可见，I的bootstrap 95% 百分位置信区间包含0，即I不显著。
+
+## 多重中介模型
+
+一般情况下，自变量影响结果变量的路径会有多条，即中介变量有多个，这就形成了多重中介模型。根据中介变量之间的关系，多重中介模型又可以分为并行中介、链式中介、复合式中介。
+
+- 并行中介：多个中介变量呈并列关系。
+- 链式中介：多个中介变量共同构成因果链。
+- 复合式中介：在多个中介变量中，部分变量呈并列关系，部分变量构成因果链。
+
+例如，假定X与Y之间有两个中介变量M1与M2，链式中介的模型图见下方：
+
+
+![链式多重中介](/codes/mediation/mediation_serial.png){width=75%}
+
+与简单中介模型，多重中介模型的统计分析并没有增加多少难度。建立多重中介模型只需注意两点：
+
+1. 先根据假设绘制模型图，再根据模型图写出所有回归方程。
+2. 定义并检验特定间接效应、总间接效应、总效应。
+
+多重中介模型中的中介路径(因果链)有多个，我们需要对每一条中介路径的特定间接效应进行检验，不要遗漏。从因果链的起点开始，到因果链的终点结束，这条中介路径上的所有回归系数(路径系数)的积就是这条路径的特定间接效应。特定间接效应的和为总间接效应，总间接效应与直接效应的和为总效应。
+
+### 链式多重中介
+
+#### 模型图
+
+以depress数据为例，前文考察了依恋焦虑经情绪应对方式影响抑郁的简单中介模型，这里进一步考察：性别(X)经依恋焦虑(M1)、情绪应对方式(M2)影响抑郁(Y)的多重中介模型，这里假设四个变量之间的关系符合下方链式多重中介模型：
+
+![链式多重中介](/codes/mediation/mediation_serial2.png){width=75%}
+
+#### 回归方程
+
+该模型中的结果变量有三个：M1、M2、Y。这三个结果变量的回归方程分别是：
+
+\begin{align}
+M1 &= intercept + s1*X \\
+M2 &= intercept + s4*X +  s2*M1 \\
+Y &= intercept + s6*X + s5*M1 + s3*M2
+\end{align}
+
+#### 直接效应、间接效应与总效应
+
+上述多重中介模型的直接效应、间接效应、总效应如下：
+
+|效应        |标签|路径                  |计算      |
+|------------|----|----------------------|----------|
+|直接效应    |D   |x --> Y               |s6        |
+|特定间接效应|I1  |x --> M1 --> Y        |s1\*s5    |
+|特定间接效应|I2  |x --> M2 --> Y        |s4\*s3    |
+|特定间接效应|I3  |x --> M1 --> M2 --> Y |s1\*s2\*s3|
+|总间接效应  |I   |                      |I1+I2+I3  |
+|总效应      |T   |                      |T=I+D     |
+
+:三种效应 {.sm}
+
+#### 模型估计
+
+与简单中介模型相比，多重中介模型的代码不过是多了几个回归方程、多了几个自定义的统计量。在下面的代码中，我们按照前文的模型图与表格为相应的路径系数打上标签，并定义直接效应、间接效应与总效应。
+
+```{r}
+model4 <- "
+  # M1的回归方程，为路径系数指定标签s1
+  attach_anx ~ s1*gender
+  # M2的回归方程，为路径系数指定标签s4、s2
+  cope_emo1 ~ s4*gender + s2*attach_anx
+  # Y的回归方程，为路径系数指定标签s6、s5、s3
+  depr1 ~ s6*gender + s5*attach_anx + s3*cope_emo1
+  # 间接效应
+  D := s6
+  I1 := s1*s5
+  I2 := s4*s3
+  I3 := s1*s2*s3
+  I := I1+I2+I3
+  T := I+D
+"
+# 拟合模型
+fit4 <- sem(
+  model = model4,
+  data = depress,
+  # 模型包含截距
+  meanstructure = TRUE,
+  # 使用bootstrap方法计算标准误
+  se = "boot",
+  # 指定bootstrap取样的次数为1000
+  bootstrap = 1000,
+  # 通过并行计算加快计算，该参数可省略
+  parallel = "snow"
+)
+# 输出结果
+summary(
+  fit4,
+  # 拟合指数
+  fit.measures = TRUE,
+  # 输出置信区间
+  ci = TRUE,
+  # 简化输出
+  standardized = FALSE,
+  # 简化输出
+  rsquare = FALSE
+)
+```
+
+上述结果表明：
+
+|效应        |标签|路径                  |计算      |bootstrap 95% 百分位置信区间|
+|------------|----|----------------------|----------|---------------|
+|直接效应    |D   |x --> Y               |s6        |[-0.131, 0.158]|
+|特定间接效应|I1  |x --> M1 --> Y        |s1\*s5    |[-0.040, 0.017]|
+|特定间接效应|I2  |x --> M2 --> Y        |s4\*s3    |[-0.107, 0.025]|
+|特定间接效应|I3  |x --> M1 --> M2 --> Y |s1\*s2\*s3|[-0.023, 0.005]|
+|总间接效应  |I   |                      |I1+I2+I3  |[-0.123, 0.024]|
+|总效应      |T   |                      |T=I+D     |[-0.185, 0.122]|
+
+:三种效应的置信区间 {.sm}
+
+### 并行多重中介模型
+
+以depress数据为例，前文考察了依恋焦虑经情绪应对方式影响抑郁的简单中介模型，这里我们进一步考察依恋焦虑经三种应对方式问题应对、情绪应对、回避应对影响抑郁的并行多重中介模型。
+
+#### 模型图
+
+四个变量的模型图如下：
+
+![并行多重中介](/codes/mediation/mediation_parallel.png){width=55%}
+
+注意，理论上该模型中三种应对方式的关系是并列的，即，它们相互之前没有因果之分。但是，三种应对方式是相关还是不相关呢？事物是普遍联系的，中介变量之间大概率是相关的。上面的模型图事实上省略了三个中介变量两两之间的相关关系，更严谨的做法是通过双向箭头将这种相关关系表达出来。
+
+#### 回归方程
+
+回归方程比较简单，这里不再赘述。
+
+#### 直接效应、间接效应与总效应
+
+三种效应的计算比较简单，这里不再赘述。
+
+#### 模型估计
+
+```{r}
+model5 <- "
+  # M1的回归方程，为路径系数指定标签
+  cope_task1 ~ a1*attach_anx
+  # M2的回归方程，为路径系数指定标签
+  cope_emo1 ~ a2*attach_anx
+  # M3的回归方程，为路径系数指定标签
+  cope_avo1 ~ a3*attach_anx
+  # Y的回归方程，为路径系数指定标签
+  depr1 ~ b1*cope_task1 + b2*cope_emo1 + b3*cope_avo1 + cc*attach_anx
+  # 相关
+  cope_task1 ~~ cope_emo1 + cope_avo1
+  cope_emo1 ~~ cope_avo1
+  # 间接效应
+  D := cc
+  I1 := a1*b1
+  I2 := a2*b2
+  I3 := a3*b3
+  I := I1+I2+I3
+  T := I+D
+"
+# 拟合模型
+fit5 <- sem(
+  model = model5,
+  data = depress,
+  # 模型包含截距
+  meanstructure = TRUE,
+  # 使用bootstrap方法计算标准误
+  se = "boot",
+  # 指定bootstrap取样的次数为1000
+  bootstrap = 1000,
+  # 通过并行计算加快计算，该参数可省略
+  parallel = "snow"
+)
+# 输出结果
+summary(
+  fit5,
+  # 拟合指数
+  fit.measures = TRUE,
+  # 输出置信区间
+  ci = TRUE,
+  # 输出标准化系数
+  standardized = TRUE,
+  # 简化输出
+  rsquare = FALSE
+)
+```
+
+上述结果中出现了一部分新的内容（见下方）。这部分内容报告了三个中介变量的残差的协方差，例如，cope_emo1的残差与cope_avo1的残差的协方差为0.102。协方差是相关系数吗?一般不是。标准化的协方差(Std.all这一列)恰恰是相关系数。可见，cope_emo1的残差与cope_avo1的残差的相关系数为0.263，p = 0.008。该结果表明，cope_emo1的残差与cope_avo1的残差的相关关系(协方差，相关系数)有必要保留在模型中，否则，模型拟合程度会下降，模型拟合指数会变差。
+
+```r
+## Covariances:
+##                    Estimate  Std.Err  z-value  P(>|z|) ci.lower ci.upper   Std.lv  Std.all
+##  .cope_task1 ~~
+##    .cope_emo1              -0.097    0.048   -2.025    0.043   -0.187    0.003   -0.097   -0.210
+##    .cope_avo1               0.014    0.041    0.339    0.735   -0.068    0.095    0.014    0.033
+##  .cope_emo1 ~~
+##    .cope_avo1               0.102    0.038    2.662    0.008    0.028    0.179    0.102    0.263
+```
+
+## 模型评价
+
+模型拟合指数(e.g., CFI, TLI, RMSEA, SRMR)的作用是评估模型与数据的拟合程度。理论上，若统计模型符合实际数据中变量之间的关系，模型拟合会较好。反之，若统计模型不符合实际数据中变量之间的关系，模型拟合会较差；若模型拟合会极差，模型将无法收敛，无法成功迭代，模型参数无法被估计出来，lavaan会直接输出WARNING。
+
+如前文所示，路径分析的模型拟合一般都很好。若你的路径分析结果显示模型拟合不好，这一般是因为你遗漏了某些变量间关系(单向箭头或者双向箭头)——假设M1与M2之间存在显著的关系，但若model没有将这种关系界定出来，lavaan会理解为M1与M2之间相关为0，故模型拟合会变差。
+
+## 包含多自变量、多结果变量的中介模型
+
+与SPSS中的PROCESS等统计工具相比，lavaan功能更为全面。我们可以通过lavaan检验包含多自变量、多结果变量的中介模型。事实上，只要你有数据，你可以检验你能想象到的任何一种中介模型。以depress数据为例，我们可以考察两个自变量依恋焦虑(X1)、依恋回避(X2)通过三种应对方式问题应对(M1)、情绪应对(M2)、回避应对(M2)影响两个结果变量抑郁T1(Y1)、抑郁T2(Y2)的多重中介模型。
+
+### 模型图
+
+上述模型的模型图如下，该模型图省略了自变量之间的相关(双向箭头)、中介变量之间的相关(双向箭头)、结果变量之间的相关(双向箭头)。
+
+![包含多自变量、多结果变量的中介模型](/codes/mediation/mediation_IVsDVs.png){width=55%}
+
+读者可以自己尝试检验这个模型，本文不再赘述。
+
+全文到此结束。

@@ -1,0 +1,244 @@
+---
+title: "总体分布，样本分布，抽样分布"
+subtitle: "Polulation, sample, and sampling distributions"
+author: "Qingyao Zhang"
+format: 
+  html: default
+  pdf: 
+    pdf-engine: xelatex
+    CJKmainfont: "HarmonyOS Sans SC"
+    lang: zh
+    toc: true
+    css: styles.css
+    date: last-modified
+    number-sections: true
+    code-line-numbers: true
+    tbl-cap-location: top
+    link-external-newwindow: true
+draft: false
+---
+
+## 总体
+
+我们捏造一个人数为10000人的总体，为10000名被试设定编号ID，并捏造出其IQ数据，设定IQ的均值为100，标准差为15。
+
+```{r}
+# Population，总体
+# 总体均值设置为100
+mu <- 100
+# 总体标准差设置为15
+sigma <- 15
+# 随机种子值设置为2026
+set.seed(202605)
+# 将ID与IQ存入数据表中
+population10000 <- data.frame(
+  # 生成10000个ID（被试编号）
+  ID = seq(1:10000), 
+  # 生成10000个均值为mu、标注差为delta的IQ分数
+  IQ = round(rnorm(10000, mean = mu, sd = sigma), 0)
+  )
+# 查看数据表
+# View(population10000)
+# 查看数据表前6行
+range(population10000$IQ)
+head(population10000)
+# 总体的实际均值
+mean(population10000$IQ)
+# 总体的实际标准差
+sqrt(sum((population10000$IQ - mean(population10000$IQ))^2)/10000)
+```
+
+## 总体分布
+
+总体分布(population distribution)是总体(10000名被试IQ得分)的分布。注意该分布的横纵坐标的全距。
+
+```{r}
+# 作总体的直方图
+# 总体分布是10000个数据点的分布。
+library(ggplot2)
+ggplot(population10000, aes(x = IQ)) +
+  geom_histogram(breaks = seq(40, 160, 10), 
+                 fill = "white", 
+                 color = "black") +
+  scale_x_continuous(breaks = seq(40, 160, 10)) +
+  coord_cartesian(xlim = c(40, 160)) +
+  theme_bw()
+```
+
+## 取样过程
+
+接下来，我们模拟取样的过程。我们从*N* = 10000的总体中随机抽取一个样本量*n* = 100的样本。我们称这个样本为`sample1`。
+
+```{r}
+# 从总体中随机抽取一个样本量为100的样本，抽取其ID
+sample1ID <- sample(population10000$ID, 100)
+# 根据ID选出sample1的数据
+sample1 <- population10000[sample1ID, ]
+```
+
+## 样本1
+
+查看`sample1`中的数据。注意：被试ID的顺序是乱的，这是由随机取样导致的。
+
+```{r}
+# 查看样本
+head(sample1)
+```
+
+## 基于样本1估计总体均值与标准差
+
+样本的均值是总体均值的无偏估计。样本的标准差总是小于总体的标准差，因此使用样本的无偏标准差作为总体标准差的无偏估计。尽管名为“无偏”，实际上还是有偏差的。
+
+```{r}
+# 取值范围
+range(sample1$IQ)
+# 计算sample1的IQ的均值
+sample1_mean <- mean(sample1$IQ)
+sample1_mean
+# 计算sample1的IQ的标准差
+sample1_sd <- sqrt(sum((sample1$IQ - sample1_mean)^2)/100)
+sample1_sd
+# sample1的无偏标准差(基于sample1估计总体的标准差)
+sample1_sd_unbiased <- sqrt(sum((sample1$IQ - sample1_mean)^2)/(100 - 1))
+sample1_sd_unbiased
+# 使用`sd()`函数计算sample1的无偏标准差（总体标准差的估计值）
+sd(sample1$IQ)
+```
+
+## 样本分布：样本1的分布
+
+样本分布（sample distribution）是样本中100个被试IQ得分的分布。
+
+```{r}
+ggplot(sample1, aes(IQ)) +
+  geom_histogram(breaks = seq(40, 160, 10),
+                 fill = "white", 
+                 color = "black") +
+  scale_x_continuous(breaks = seq(40, 160, 10)) +
+  coord_cartesian(xlim = c(40, 160)) +
+  theme_bw()
+```
+
+## 样本分布与总体分布的关系
+
+若总体的均值mu与标准差sigma是未知的，我们可以用样本的均值与无偏标准差来估计总计的均值与标准差：
+
+\begin{align}
+mu &= M_{sample} \\
+sigma &= s
+\end{align}
+
+在上式中，$M_{sample}$是样本的均值，$s$是样本的无偏标准差。
+
+## 重复取样
+
+使用一个样本计算得到的均值估计总体的均值产生的偏差可能较大，如果我们重复取样的过程，抽取多个样本，将多个样本的均值求均值，那么，我们将得到更为准确的估计值。下面，我们从人数*N* = 10000的总体中取出*m* = 1000个样本量*n* = 100的样本。
+
+```{r}
+# 从总数为10000的样本中累计抽取1000个样本量为100的样本，存入samples
+samples <- list()
+for (index in 1:1000) samples[[index]] <- population10000[sample.int(10000, 100), ]
+# 查看samples
+length(samples)
+head(samples[[1]])
+```
+
+## 抽样分布：1000个样本的均值的均值与标准差
+
+与单个样本（例如：`sample1`）相比，1000个实际样本的均值的均值更加接近总体均值。
+
+```{r}
+# 分别计算1000个样本的均值，一共得到1000个均值，存入samples_means
+samples_means <- sapply(samples, function(x) mean(x$IQ))
+head(samples_means)
+range(samples_means)
+head(samples_means)
+
+# 1000个实际样本的均值的均值。
+mean(samples_means)
+# 1000个实际样本的均值的方差。
+sum((samples_means-mean(samples_means))^2)/1000
+# 1000个实际样本的均值的标准差。
+sqrt(sum((samples_means-mean(samples_means))^2)/1000)
+```
+
+## 抽样分布
+
+抽样分布是1000个样本的均值的分布。这个分布中的每一个数据点是一个样本中100名被试的IQ的均值，而不是一个被试的IQ得分，这个分布的中心是是1000个样本的均值的均值，这个分布的标准差是1000个样本的均值的标准差。
+
+```{r}
+# 抽样分布。即，1000个样本的均值的分布。
+ggplot(data.frame(samples_means), aes(samples_means)) +
+  geom_histogram(breaks = seq(95, 105, 1),
+                 fill = "white", 
+                 color = "black") +
+  scale_x_continuous(breaks = seq(95, 105, 1)) +
+  theme_bw()
+#  + coord_cartesian(xlim = c(40, 160))
+```
+
+## 抽样分布与总体分布、样本分布的关系
+
+若总体的均值mu与标准差sigma是已知的：
+
+\begin{align}
+M_{sampling} &= mu \\
+SD_{sampling} &= \frac{sigma}{\sqrt{n}}
+\end{align}
+
+在上式中，n是样本量。
+
+若总体的均值mu与标准差sigma是未知的，我们可以用样本的均值与无偏标准差来估计总计的均值与标准差：
+
+\begin{align}
+M_{sampling} &= M_{sample} \\
+s_{sampling} &= \frac{s}{\sqrt{n}}
+\end{align}
+
+在上式中，$M_{sample}$是样本的均值，$s$是样本的无偏标准差。
+
+## 三种分布的比较
+
+比较三种分布的频数分布图：
+
+```{r}
+library(patchwork)
+plot_pop <- ggplot(population10000, aes(x = IQ)) +
+  geom_histogram(breaks = seq(40, 160, 10), 
+                 fill = "wheat",
+                 color = "grey") +
+  scale_x_continuous(breaks = seq(40, 160, 20)) +
+  coord_cartesian(xlim = c(40, 160), ylim = c(0, 3000)) +
+  labs(title = "Population") +
+  annotate(geom = "text", 
+           label = c("N == 10000","mu == 99.80","sigma == 14.94"), 
+           x = 55, y = c(2300, 2000, 1700), parse = TRUE) +
+  theme_classic()
+plot_sample <- ggplot(sample1, aes(IQ)) +
+  geom_histogram(breaks = seq(40, 160, 10),
+                 fill = "wheat",
+                 color = "grey") +
+  scale_x_continuous(breaks = seq(40, 160, 20)) +
+  coord_cartesian(xlim = c(40, 160), ylim = c(0, 30)) +
+  labs(title = "Sample") +
+  annotate(geom = "text", 
+           label = c("n == 100","M == 98.93","SD == 14.12"), 
+           x = 55, y = c(23, 20, 17), parse = TRUE) +
+  theme_classic()
+plot_sampling <- ggplot(data.frame(samples_means), aes(samples_means)) +
+  geom_histogram(breaks = seq(95, 105, 1),
+                 fill = "wheat",
+                 color = "grey") +
+  scale_x_continuous(breaks = seq(95, 105, 1)) +
+  coord_cartesian(ylim = c(0, 300)) +
+  labs(title = "Sampling", x = "Mean of IQ") +
+  annotate(geom = "text", 
+           label = c("m == 1000","M[mean] == 99.81","SD[mean] == 1.42"), 
+           x = 96.3, y = c(230, 200, 170), parse = TRUE) +
+  theme_classic()
+plot_pop + plot_sample + plot_sampling
+ggsave("compare3distributions.png", width = 12, height = 3)
+```
+
+
+本文到此结束。

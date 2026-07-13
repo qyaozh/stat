@@ -1,0 +1,97 @@
+---
+title: "偏回归"
+subtitle: "Partial regression"
+draft: true
+---
+
+本文使用R程序包`Keng`及其中的数据`depress`，采用四种方式检验在控制了情绪定向的应对方式(`cope_emo1`)、回避型应对方式(`cope_avo1`) 后，问题定向的应对方式(`cope_task1`)对抑郁(`depr1`)的独特效应。这四种方式是: 
+
+- 多元回归及回归系数的*t*检验。
+- 分层回归及其*F*检验。
+- 单个参数（`cope_task1`的偏回归系数）的*PRE*。
+- 使用残差检验`cope_task1`的独特效应。
+
+首先安装R与RStudio软件。
+
+之后安装`Keng`的最新版：
+
+```{r eval=FALSE}
+install.packages("devtools")
+devtools::install_github("qyaozh/Keng", dependencies = TRUE, build_vignettes = TRUE)
+```
+
+在R中加载`Keng`程序包，并调用`depress`数据。
+
+```{r setup}
+library(Keng)
+data(depress)
+```
+
+## 多元回归
+
+首先建立两个多元回归模型。Model C （Compact model）做`depr1`对`cope_emo1`和`cope_avo1`的回归。Model A（Augmented model）做`depr1`对`cope_task1`、 `cope_emo1`和`cope_avo1`的回归。 
+
+```{r}
+# multiple regression
+fitC <- lm(depr1 ~ cope_emo1 + cope_avo1, depress)
+fitA <- lm(depr1 ~ cope_task1 + cope_emo1 + cope_avo1, depress)
+summary(fitA)
+```
+可见，`cope_task1`的偏回归系数是-0.16705, *t*(90) = -3.349, *p* = 0.00119。
+
+## 分层回归
+
+第二，通过*F*检验对上面的分层回归的两个回归模型Model C与Model A进行比较。与Model C相比，Model A增加了 *cope_task1*这一个自变量。在SPSS中，该*F*检验被视为对*R*^2^ change的检验。
+
+```{r}
+anova(fitC, fitA)
+```
+可见，*F* (1, 90) = 11.217, *p* = 0.001185. 该*F*检验与Model A 多元回归中对`cope_task1`的*t*检验是等价的，它们都检验了**控制cope_emo1与cope_avo1的作用后**、*cope_task1*的独特效应。此时，*F*分子上的*df*为1，*F* = *t*^2^，*F*分母的*df*即为*t*的*df*。
+
+## 单个参数的*PRE*
+
+第三，使用*PRE*检验*cope_task1*的独特效应。
+
+```{r}
+format(compare_lm(fitC, fitA), digits = 3, nsmall = 3)
+```
+可见，*F* (1, 90) = 11.217, *p* = 0.00119。此时，*PRE*的*F*检验与分层回归的*F*检验是等价的。
+
+## 使用残差进行回归
+
+第四，使用残差检验`cope_task1`的独特效应。
+
+做`depr1`对`cope_emo1`和`cope_avo1`的回归，得到`depr1`的残差`dm_res`，该残差排除了`cope_emo1`和`cope_avo1`对`depr1`的效应。
+
+再做`cope_task1`对`cope_emo1`和`cope_avo1`的回归，得到`cope_task1`的残差`pm_res`，该残差排除了`cope_emo1`和`cope_avo1`对`cope_task1`的效应。
+
+之后做`dm_res`和`pm_res`的相关，我们就得到了`depr1`和`cope_task1`的偏相关系数/净相关系数。
+
+```{r}
+dm_res <- lm(depr1 ~ cope_emo1 + cope_avo1, depress)$residuals
+pm_res <- lm(cope_task1 ~ cope_emo1 + cope_avo1, depress)$residuals
+resDat <- data.frame(dm_res, pm_res)
+cor(dm_res, pm_res)
+```
+
+可见，`depr1`和`cope_task1`的偏相关系数为-0.3329009。
+
+做`dm_res`对`pm_res`的一元回归，我们就得到了`cope_task1`对`depr1`的独特效应。
+
+```{r}
+summary(lm(dm_res ~ pm_res, data.frame(dm_res, pm_res)))
+```
+
+可见，`pm_res`的回归系数与前文多元回归Model A中`cope_task1`的偏回归系数相同。然而，它们的*t*与*p*是不同的。为什么呢？前文用*PRE*检验了`cope_task1`的独特效应，这里我们使用*PRE*检验`pm_res`的独特效应，然后将它们进行比较。注意，单个回归系数的*PRE*的*F*检验与该回归系数的*t*检验是等价的；另外，Model A与Model C是相对的关系，统计目的不同，Model C与Model A所指的模型也不同。
+
+```{r}
+fitC <- lm(dm_res ~ 1, resDat)
+fitA <- lm(dm_res ~ pm_res, resDat)
+format(compare_lm(fitC, fitA), digits = 3, nsmall = 3)
+```
+
+比较`pm_res`和`cope_task1`的*PRE*。可见，*PRE*是相等的，即`cope_task1`的独特效应本质上没有变化。但是，*PRE*的*F*检验的*df2*是不同的，这使得*F*与*p*值也发生了变化。换句话说，`cope_task1`的独特效应*PRE*是不变的，*PRE*基于模型比较检验*PRE*的显著性，但用来检验*PRE*的显著性的Model C与Model A是不同的，因而模型比较的结论（i.e., *F*检验和*t*检验的结果）也不同。打个比方，一勺盐放在一杯水里感觉齁咸，但一勺盐放在一锅水里感觉咸淡刚好。
+
+回想*PRE*的*F*检验的公式，我们将得到以下结论：*PRE*保持不变，则*PRE*的显著性（*F*值与*p*值）是由Model C的自由度与Model A新增的参数的数量决定的。 
+
+因此，我们也将得到以下结论：给定一组自变量的*PRE*，这一组自变量的*PRE*达到显著的统计检验力是由样本量*n*和回归模型中参数的总数决定的。同理，给定一组自变量的*PRE*、回归模型中参数的总数，以及所需的统计检验力，我们可以计算出所需的样本量——这便是通过回归模型计划样本量的方法。

@@ -1,0 +1,165 @@
+---
+title: "集中趋势与离散趋势"
+subtitle: "Central tendency and variability"
+author: "Qingyao Zhang"
+date: last-modified
+format: html
+draft: true
+---
+
+```{r}
+data("well", package = "Keng")
+```
+
+## 集中趋势
+
+集中趋势的统计量有三个：众数（mode），中位数（median），算数平均数（mean）。
+
+### 众数
+
+众数指的是频数最大的数值。以题项flourish101为例，通过统计频数或者绘制条形图，我们容易发现在flourish101上得6分的人最多，即，flourish101的众数是6。
+
+### 中位数
+
+百分位
+
+```{r}
+# 第50百分位数，即中位数
+quantile(well$flourish1, probs = 0.5)
+```
+
+### 均值
+
+$$
+M = \frac{\sum{x_i}}{biased} 
+$$
+
+
+
+```{r}
+# 幸福感的一般水平
+mean(well$flourish1, na.rm = TRUE)
+```
+
+数据框的行均值与列均值：以第一个时间点的实现论幸福感为例
+
+|rownames|flourish101|flourish102|flourish103|flourish104|flourish105|flourish106|flourish107|flourish108|rowMeans|
+|--------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|--------|
+|       1|          7|          6|          6|          7|          6|          4|          6|          4|       ?|
+|       2|          4|          2|          4|          6|          7|          4|          4|          4|       ?|
+|       3|          6|          4|          6|          6|          5|          6|          6|          6|       ?|
+|       4|          7|          6|          4|          7|          7|          7|          7|          6|       ?|
+|       5|          6|          5|          6|          7|          7|          7|          7|          7|       ?|
+|       6|          6|          5|          6|          6|          6|          6|          6|          6|       ?|
+|colMeans|          ?|          ?|          ?|          ?|          ?|          ?|          ?|          ?|       ?|
+
+: {.sm .striped .hover}
+
+```{r}
+#| eval: false
+# 计算维度或量表的得分
+# 计算flourish在第1个时间点的得分
+# 查看变量名
+names(well)
+```
+
+```{r}
+# 根据列号计算行均值，提前移除缺失值
+well$flourish1_1 <- rowMeans(well[287:294], na.rm = TRUE)
+well$flourish1_1
+
+# 根据列名计算行均值，提前移除缺失值
+flourish_items <- c("flourish101","flourish102","flourish103","flourish104",
+                    "flourish105","flourish106","flourish107","flourish108")
+
+well$flourish1_2 <- rowMeans(well[flourish_items], na.rm = TRUE)
+well$flourish1_2
+
+# 根据列名计算行均值
+# 通过paste0()生成题项变量名
+paste0("flourish", 101:108)
+well$flourish1_3 <- rowMeans(well[paste0("flourish", 101:108)], na.rm = TRUE)
+well$flourish1_3
+
+# 检查计算结果是否一致
+all(well$flourish1_1 == well$flourish1_2)
+all(well$flourish1_1 == well$flourish1_3)
+```
+
+## 离散趋势
+
+### 全距
+
+$$
+max - min
+$$
+
+```{r}
+# flourish1的全距
+range(well$flourish1)
+```
+
+四分位
+
+四分位数
+
+### 四分位距
+
+$$
+Q75 - Q25
+$$
+
+```{r}
+# flourish1的四分位距
+Q25 <- quantile(well$flourish1, 0.25)
+Q75 <- quantile(well$flourish1, 0.75)
+as.numeric(Q75 - Q25)
+```
+
+
+### 方差
+
+\begin{align}
+SS &= \sum{(x_i-M_x)^2} \\
+s^2_{biased} &= \frac{SS}{biased} \\
+s^2_{unbiased} &= \frac{SS}{unbiased} 
+\end{align}
+
+在上面的公式中，SS表示平方和。$s^2_{biased}$表示有偏方差，$s^2_{unbiased}$表示无偏方差。
+
+```{r}
+# flourish1的方差
+# 有偏方差，使用公式
+sum((well$flourish1 - mean(well$flourish1))^2)/200
+# 无偏方差，使用公式
+sum((well$flourish1 - mean(well$flourish1))^2)/(200-1)
+# 无偏方差，使用函数var()
+var(well$flourish1)
+```
+
+### 标准差
+
+\begin{align}
+s_{biased} &= \sqrt{s^2_{biased}} \\
+s_{unbiased} &= \sqrt{s^2_{unbiased}}
+\end{align}
+
+$s_{biased}$表示有偏标准差，$s_{unbiased}$表示无偏标准差。
+
+```{r}
+# flourish1的标准差
+# 有偏标准差，基于有偏方差的公式
+sqrt(sum((well$flourish1 - mean(well$flourish1))^2)/200)
+# 无偏标准差，基于无偏方差的公式
+sqrt(sum((well$flourish1 - mean(well$flourish1))^2)/(200-1))
+# 无偏标准差，使用函数sd()
+sd(well$flourish1)
+```
+
+## 多个变量的描述性统计
+
+```{r}
+# 使用程序包psych中的函数describe()进行描述性统计
+library(psych)
+describe(well[347:349])
+```

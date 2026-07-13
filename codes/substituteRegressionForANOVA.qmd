@@ -1,0 +1,406 @@
+---
+title: "用回归分析代替方差分析"
+subtitle: "Substitute regression for ANOVA"
+draft: true
+---
+
+```{r, setup}
+#| include: false
+knitr::opts_chunk$set(collapse = FALSE, comment = '##')
+```
+
+要考察自变量X对连续变量Y的影响，一般而言，当自变量X是连续变量时，我们可以使用回归分析，用X预测Y；当自变量X是分类变量时，我们可以使用方差分析。事实上方差分析可以用回归分析代替。
+
+本文将使用`Keng`程序包中的`depress`数据对此进行演示。本文将检验四个班级（`class`）抑郁（`depr1`）水平的差异，或者说班级对抑郁的影响。班级有四个：1，2，3，4。
+
+## 方差分析
+
+在SPSS中，我们可以使用[Analyze]{.huibj}: [General Linear Model]{.huibj}: [Univariate]{.huibj}进行被试间方差分析，检验`depr1`在`class`上的差异。为便于读者的理解，本文将SPSS的方差分析表重新整理如下：
+
+Source||Type III Sum of Squares|df|Mean Square|F|Sig.
+|-|-|-|-|-|-|-|
+Model|Intercept|335.863|1|335.863|2344.471|0.000
+||class|0.722|3|0.241|1.679|0.177
+Error||12.893|90|0.143
+Total||355.620|94
+Corrected Model|class|.722|3|0.241|1.679|0.177
+Corrected Error||12.893|90|0.143
+Corrected Total||13.615|93
+
+:Tests of Between-Subjects Effects {.sm}
+
+你有没有感到奇怪：方差分析表中为何有截距？
+
+## 基于虚拟编码的回归分析
+
+要通过回归分析检验`class`这一多水平分类自变量对`depr1`的影响，我们不能将`class`直接当做连续变量进行回归分析，因为`class`的得分1、2、3、4之间的差值没有意义，我们可以将`class`进行虚拟编码，将其转化为有意义的predictor。对于分类水平为k的分类变量，我们需要将其编码为k-1个虚拟变量，这里我们将`class`编码为3个虚拟变量`class2`、`class3`、`class4`，编码方案如下：
+
+|class|class2|class3|class4|
+|-|-|-|-|
+1|0|0|0
+2|1|0|0
+3|0|1|0
+4|0|0|1
+
+: 虚拟编码 {.sm}
+
+注：class2 = 该班是2班吗；class3 = 该班是3班吗；class4 = 该班是4班吗。
+
+我们使用`ifelse()`对`class`进行虚拟编码：
+
+```{r}
+#| message: false
+#| comment: "#>"
+library(car)
+library(Keng)
+data(depress)
+depress$class2 <- ifelse(depress$class == 2, 1, 0)
+depress$class3 <- ifelse(depress$class == 3, 1, 0)
+depress$class4 <- ifelse(depress$class == 4, 1, 0)
+```
+
+我们将3个虚拟变量`class2`、`class3`、`class4`**同时**纳入回归方程，它们共同反映了`class`对`depr1`的影响。与SPSS一致，`lm()`函数默认回归模型包含截距，下面两个回归分析所建立的模型是相同的。
+
+```{r}
+fitDummy <- lm(depr1 ~ class2 + class3 + class4, depress)
+summary(fitDummy)
+fitDummy <- lm(depr1 ~ 1 + class2 + class3 + class4, depress)
+summary(fitDummy)
+```
+
+事实上，我们可以将截距当做一个自变量`1`（所有被试在这个自变量上得分都为1）的回归系数。当回归模型不包含任何自变量时（也不包含截距），回归模型的残差的平方和就是`depr1`的总平方和。我们用`anova()`计算回归模型的残差平方和。
+
+```{r}
+fit0 <- lm(depr1 ~ - 1, depress)
+anova(fit0)
+```
+
+可得，`depr1`的总平方和为355.62（*df* = 94），此即前文SPSS方差分析表中Total所对应的平方和。与`class2`、`class3`、`class4`一样，截距（自变量`1`）也能解释`depr1`的变异、分摊`depr1`的平方和。`depr1`的平方和可以分解为三部分：截距解释的平方和，class解释的平方和（`class2`、`class3`、`class4`共同解释的平方和），以及残差平方和。下面我们将这三个平方和分别计算出来。残差平方和的计算较为简单，我们只需要计算包含所有自变量的回归模型的残差的平方和，即`fit2`的残差平方和。
+
+```{r}
+fit1 <- lm(depr1 ~ 1, depress)
+anova_fit1 <- anova(fit1)
+anova_fit1
+```
+
+可得，在加入截距后，残差的平方和减少为24.681（*df* = 173），此即前文SPSS方差分析表中Corrected Total所对应的平方和。
+
+```{r}
+fitDummy <- lm(depr1 ~ 1 + class2 + class3 + class4, depress)
+anova_fitDummy <- anova(fitDummy)
+anova_fitDummy
+```
+
+在加入`class2` 、`class3`、`class4`后，我们得到了完整的回归模型，此时残差的平方和减少为12.8932，此即前文SPSS方差分析表中Error所对应的平方和。
+
+我们使用模型比较的方法，通过残差的变化量计算`class`的平方和：
+
+```{r}
+anova(fit1, fitDummy)
+```
+
+可得，`class2`、`class3`、`class4`**总共**解释/分摊/减少的平方和为`anova_fit1[,2] - anova_fitDummy[4, 2]` = `r anova_fit1[,2] - anova_fitDummy[4, 2]`（*df* = 3），此即前文SPSS方差分析表中class所对应的平方和，亦即Corrected Model所对应的平方和。
+
+使用同样的模型比较的方法，我们可以得到截距所解释/分摊/减少的的平方和：
+
+```{r}
+fit2 <- lm(depr1 ~ -1 + class2 + class3 + class4, depress)
+anova(fit2)
+anova(fit2, fitDummy)
+```
+可得，截距所解释/分摊/减少的的平方和为94.32。奇怪，为何截距的平方和与前文SPSS方差分析表中Intercept对应的平方和335.863不一致？这是因为**虚拟编码不是正交编码**，因此截距、所有自变量的平方和的和不等于总平方和。
+
+我们可以使用`car`程序包中的`Anova()`函数直接计算截距与各自变量所解释的平方和：
+
+```{r}
+Anova(fitDummy, type = 3)
+```
+
+从上面的方差分析表可知，`class2`、`class3`、`class4`的平方和的和不等于class的平方和，原因同上：虚拟编码不是正交编码，class2、class3、class4两两之间存在一定的相关，平方和的和不等于总平方和。尽管基于虚拟编码的回归分析具有上述缺点，但是：（1）虚拟编码的回归系数易于解释；（2）`class2`、`class3`、`class4`总共的平方和与`class`的平方和是相等的，残差的平方和是相等的，总平方和是相等的，具体见前文的计算。
+
+## 正交编码与平衡设计
+
+**方差分析是回归分析的特例。当分类自变量采用正交编码与平衡设计时，方差分析与回归分析是等价的。**
+
+所谓正交编码，即编码是正交的、独立的，而不是相关的。什么样的编码方案是正交编码？我们可以直接计算编码的相关，正交编码的相关为0。以前文虚拟编码为例，下面计算虚拟编码的相关：
+
+|class|class2|class3|class4|
+|-|-|-|-|
+3|0|0|0
+5|1|0|0
+9|0|1|0
+12|0|0|1
+
+: Dummy coding {.sm}
+
+```{r}
+dat <- data.frame(
+  class2 = c(0, 1, 0, 0),
+  class3 = c(0, 0, 1, 0),
+  class4 = c(0, 0, 0, 1)
+)
+cor(dat)
+```
+
+可见，虚拟编码不是正交编码。
+
+在下面的编码方案中，X表示原始的多分类自变量，Mean表示X各水平（组）的均值，c1、c2、c3表示编码，L表示编码系数。L有两个下标，第一个下标表示X的水平，第二个下标表示c的序号。c1、c2、c3将作为自变量被纳入回归分析。
+
+|x|Mean|   c1|   c2|   c3|
+|-|   -|    -|    -|    -|
+|1|  M1|L~11~|L~12~|L~13~|
+|2|  M2|L~21~|L~22~|L~23~|
+|3|  M3|L~31~|L~32~|L~33~|
+|4|  M4|L~41~|L~42~|L~43~|
+
+: 编码方案 {.sm}
+
+根据协方差的计算公式，正交编码需满足以下两个条件：
+
+1. 编码变量的系数之和等于0。对c1而言，L11 + L21 + L31 + L41 = 0；c2、c3也应如此。
+
+   这一特点保证了，在检验多个分类变量的交互效应时，其他分类变量的一次项的效应为其主效应（后文对此进行了进一步的说明；Granziol, et al., 2025）。
+   
+2. x的所有水平上，两个编码变量的系数之积的和等于0。对c1与c2而言，L11\*L12 + L21\*L22 + L31\*L32 + L41\*L42 = 0；c1与c3、c2与c3也应如此。
+
+   这一特点保证了多个编码变量（例如：c1与c2）是相互独立的。这使得多个编码变量所解释的变异是独特的、互不重叠的（Granziol, et al., 2025）。
+   
+c1、c2、c3的回归系数表示什么含义呢？Judd等人（2017）指出，对于分类水平为k的分类变量，回归分析中包含全部k-1个编码变量，且这k-1个编码变量符合正交编码时，我们可用公式计算其回归系数。例如，c1的回归系数等于(L~11~\*M1 + L~21~\*M2 + L~31~\*M3 + L~41~\*M4)/(L~11~^2^ + L~21~^2^ + L~31~^2^ + L~41~^2^)，其他可类推。即，每个回归系数都是组均值的某种线性组合。
+
+除了正交编码，回归分析的平方和若要与ANOVA一致，则还需满足平衡设计这一条件。平衡设计指的是各组的样本量相等。在本文的例子中，平衡设计即要求4个班级的样本量相等。
+
+## 非平衡设计条件下基于Helmert编码的回归分析
+
+当研究设计是平衡设计，即各组样本量相等时，Helmert编码是正交编码，截距、所有自变量的平方和的和等于总平方和。在本研究中，各`class`人数不等，本研究不是平衡设计。Helmert编码方案如下：
+
+|class|H2|H3|H4|
+|    -| -| -| -|
+|    1| 3| 0| 0|
+|    2|-1| 2| 0|
+|    3|-1|-1| 1|
+|    4|-1|-1|-1|
+
+: Helmert coding {.sm}
+
+```{r}
+contr.helmert(4)
+depress$H2 <- car::recode(depress$class, "1 = 3; else = -1")
+depress$H3 <- car::recode(depress$class, "1 = 0; 2 = 2; else = -1")
+depress$H4 <- car::recode(depress$class, "c(1,2) = 0; 3 = 1; 4 = -1")
+```
+
+我们采用Helmert编码进行回归分析，并采用`Anova()`计算截距与自变量的平方和：
+
+```{r}
+fitHelmert <- lm(depr1 ~ 1 + H2 + H3 + H4, depress)
+summary(fitHelmert)
+car::Anova(fitHelmert, type = 3)
+```
+
+可见，截距、残差的平方和与前文SPSS方差分析表中的平方和一致，`classH2`、`classH3`、`classH4`的平方和的和与前文SPSS方差分析表中`class`的平方和一致。**但是**，截距、残差、所有自变量的平方和的和（335.86 + 0.20 + 0.51 + 0.01 ）与前文SPSS方差分析表中Total平方和不一致，这是因为本研究中`class`不符合平衡设计。
+
+## 平衡设计条件下基于Helmert编码的回归分析
+
+当研究设计是平衡设计（即各组样本量相等），对类别变量进行正交编码，例如Helmert编码，那么，回归分析中截距、所有自变量的平方和的和等于总平方和。
+
+首先筛选数据，令各组样本量相等：
+
+```{r}
+#| message: false
+library(tidyverse)
+depress2 <- depress |> 
+  group_by(class) |> 
+  slice_head(n = 19) |> 
+  ungroup()
+
+# library(haven)
+# write_sav(depress2, "depress2.sav")
+
+# regression
+fitHelmert2 <- lm(depr1 ~ 1 + H2 + H3 + H4, depress2)
+summary(fitHelmert2)
+car::Anova(fitHelmert2, type = 3)
+```
+
+SPSS分析的结果如下：
+
+					
+Dependent Variable:   depr1
+
+Source|Type III Sum of Squares|df|Mean|Square|F|Sig.
+|-|-|-|-|-|-|-|
+Corrected Model|.936a|3|0.312|2.371|0.078
+Intercept|278.173|1|278.173|2113.646|0
+class|0.936|3|0.312|2.371|0.078
+Error|9.476|72|0.132		
+Total|288.585|76			
+Corrected Total|10.412|75			
+
+: Tests of Between-Subjects Effects {.sm}
+
+a R Squared = .090 (Adjusted R Squared = .052)
+
+在这里，截距、残差、所有自变量的平方和的和（278.173 + 9.476 + 0.741 + 0.037 + 0.158 ）与SPSS方差分析表中Total平方和288.585一致，这是因为这里同时采用了正交编码与平衡设计。
+
+## 主效应，交互效应，简单效应
+
+这里以性别（男vs女）与寄宿（寄宿vs走读）的交互效应为例，讲解回归分析与方差分析的等价性。首先筛选数据，令各组的性别、班级性质的分布平衡。
+
+```{r}
+depress3 <- depress |> 
+  group_by(boarder, gender) |> 
+  slice_head(n = 17) |> 
+  ungroup()
+```
+
+```r
+write_sav(depress3, "depress3.sav")
+```
+
+对性别与班级两个变量分别进行Effect coding（又称contrast coding，也称deviation coding），该编码属于正交编码。性别与班级两两组合，共组合成4个组：（gender1, boarder1），（gender1, boarder2），（gender2, boarder1），（gender2, boarder2）。其编码方案如下，其中第4列由第2列与第3列相乘得到。
+
+|分组|genderC|boarderC|interC|
+|-|-|-|-|
+gender1, boarder1|-1|-1| 1
+gender1, boarder2|-1| 1|-1
+gender2, boarder1| 1|-1|-1
+gender2, boarder2| 1| 1| 1
+
+在概念上，genderC检验了gender的主效应，即均值的均值的差异。上述矩阵中genderC检验的假设是：(gender1boarder1 + gender1boarder2) - (gender2boarder1  + gender2boarder2)。
+
+在概念上，boarderC检验了boarder的主效应，即均值的均值的差异。上述矩阵中boarderC检验的假设是：(gender1boarder1 + gender2boarder1) - (gender1boarder2  + gender1boarder2)。
+
+在概念上，interC检验了gender与boarder的交互效应，即均值的差异的差异。上述矩阵中interC检验的假设是：(gender2boarder2  - gender2boarder1) - (gender1boarder2  - gender1boarder1)。
+
+计算四个组的均值。gender2boarder2表示（gender2，boarder2）这一组的均值，其他可依次类推。
+
+```{r}
+(gender2boarder2 <- mean(depress3$depr1[(depress3$gender == 2) & (depress3$boarder == 2)], na.rm = TRUE))
+(gender2boarder1 <- mean(depress3$depr1[(depress3$gender == 2) & (depress3$boarder == 1)], na.rm = TRUE))
+(gender1boarder2 <- mean(depress3$depr1[(depress3$gender == 1) & (depress3$boarder == 2)], na.rm = TRUE))
+(gender1boarder1 <- mean(depress3$depr1[(depress3$gender == 1) & (depress3$boarder == 1)], na.rm = TRUE))
+```
+
+计算gender的主效应：
+
+```{r}
+(gender1boarder2 + gender1boarder1)/2 - (gender2boarder2 + gender2boarder1)/2
+```
+
+计算boarder的主效应：
+
+```{r}
+(gender2boarder1 + gender1boarder1)/2 - (gender2boarder2 + gender1boarder2)/2
+```
+
+gender与boarder的交互效应：
+
+```{r}
+(gender2boarder2  - gender2boarder1) - (gender1boarder2  - gender1boarder1)
+```
+
+根据编码方案进行编码：
+
+```{r}
+depress3$genderC <- car::recode(depress3$gender, "2 = -1; 1 = 1")
+depress3$boarderC <- car::recode(depress3$boarder, "2 = -1; 1 = 1")
+depress3$interC <- depress3$genderC*depress3$boarderC
+```
+
+通过回归分析检验交互效应：
+
+```{r}
+interFit <- lm(depr1 ~ genderC + boarderC + interC, depress3)
+summary(interFit)
+car::Anova(interFit, type = 3)
+```
+
+SPSS分析结果如下。
+					
+Dependent Variable:   depr1
+
+Source|Type III Sum of Squares|df|Mean Square|F|Sig.
+|-|-|-|-|-|-|
+Corrected Model|.551a|3|0.184|1.148|0.336
+Intercept|242.449|1|242.449|1516.093|0
+gender|0.025|1|0.025|0.155|0.695
+boarder|0.461|1|0.461|2.884|0.094
+gender * boarder|0.065|1|0.065|0.406|0.527
+Error|10.235|64|0.16		
+Total|253.235|68			
+Corrected Total|10.786|67
+
+: Tests of Between-Subjects Effects {.sm}
+
+a R Squared = .051 (Adjusted R Squared = .007)					
+
+可见，gender与boarder的主效应、交互效应与上述回归分析的结果一致，尽管回归分析中genderC、boarderC、interC的回归系数与相应的均值的差值并不相等。这里的回归系数表示什么？请参考前文“正交编码与平衡设计”部分。genderC的回归系数的含义为(gender2boarder2 + gender2boarder1) - (gender1boarder2 + gender1boarder1)/4。boarderC、interC的回归系数的计算方式可依次类推。
+
+为了使回归分析中的回归系数与主效应、交互效应的值相等，我们可以对编码进行更精确的调整。这里分两步，第一步确定**假设矩阵**，第二步将**假设矩阵**转换为**对比矩阵**（Granziol et al., 2025）。
+
+假设矩阵：
+
+|分组|genderC|boarderC|interC|
+|-|-|-|-|
+gender2, boarder2|-1/2|-1/2| 1
+gender2, boarder1|-1/2| 1/2|-1
+gender1, boarder2| 1/2|-1/2|-1
+gender1, boarder1| 1/2| 1/2| 1
+
+在R中生成假设矩阵：
+
+```{r}
+matH <- matrix(c(-1/2, -1/2,  1,
+                 -1/2,  1/2, -1,
+                  1/2, -1/2, -1,
+                  1/2,  1/2,  1),
+               nrow = 4,
+               byrow = TRUE,
+               dimnames = list(
+                 c("gender2boarder2", "gender2boarder1", "gender1boarder2", "gender1boarder1"),
+                 c("genderC","boarderC","interC")
+               ))
+MASS::fractions(matH)
+```
+
+将假设矩阵转换为对比矩阵：
+
+```{r}
+matC <- t(MASS::ginv(matH))
+dimnames(matC) = dimnames(matH)
+MASS::fractions(matC)
+```
+
+通过相关分析检验matC是否正交：
+
+```{r}
+cor(matC)
+```
+
+在数据中生成对比矩阵：
+
+```{r}
+depress3$genderC <- car::recode(depress3$gender, "0 = -1/2; 1 = 1/2")
+depress3$boarderC <- car::recode(depress3$boarder, "0 = -1/2; 1 = 1/2")
+depress3$interC <- depress3$genderC*depress3$boarderC
+```
+
+通过回归分析检验交互效应：
+
+```{r}
+interFit <- lm(depr1 ~ genderC + boarderC + interC, depress3)
+summary(interFit)
+car::Anova(interFit, type = 3)
+```
+
+通过与前文的均值进行比较可得，此时genderC的回归系数即为gender的主效应（均值的均值的差异），boarderC的回归系数即为boarder的主效应（均值的均值的差异），interC的回归系数即为gender与boarder的交互效应（均值的差异的差异）。
+
+由此，我们还得到以下结论：**在包含交互效应的回归分析中，自变量的一次项的回归系数可能是简单效应，也可能是主效应。自变量的一次项的回归系数是简单效应还是主效应，这取决于自变量的编码方式。本例采用effect coding与正交编码，因此一次项检验的是主效应，交互项检验的是交互效应。在一般的调节效应的回归分析中，例如，W调节了X对Y的效应，当W = 0有意义，且X的单位1有意义时，X的一次项的回归系数事实上表示的是W = 0时X对Y的简单效应；在本例中，genderC、boarderC的得分0没有意义。**
+
+对于上述结论，我们需要注意：方差分析中的主效应是主效应，但当交互效应显著时，这个主效应仍然是没有意义的。
+
+## 参考文献
+
+Granziol, U., Rabe, M., Gallucci, M., Spoto, A., & Vidotto, G. (2025). Not Another Post Hoc Paper: A New Look at Contrast Analysis and Planned Comparisons. *Advances in Methods and Practices in Psychological Science*, *8*(1), 25152459241293110.
+
+Judd, C. M., McClelland, G. H., & Ryan, C. S. (2017). *Data analysis: A model comparison approach to regression, ANOVA, and beyond*. Routledge.

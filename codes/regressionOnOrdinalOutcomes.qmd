@@ -1,0 +1,182 @@
+---
+title: "有序结果变量的回归"
+subtitle: "Regression on ordinal outcomes"
+draft: true
+---
+
+在读本文之前，请先读《二分结果变量的回归》一文。
+
+```{r}
+#| label: "packages"
+#| message: false
+library(tidyverse)
+library(Keng)
+library(MASS)
+```
+
+```{r}
+#| label: "options"
+#| include: false
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "##"
+)
+```
+
+## 数据与案例
+
+`Keng`程序包中的`depress`数据中包含了我们调查的学生第一个时间点的*问题定向应对方式*`cope101`(1 = very seldom, 5 = very often)与第二个时间点的*抑郁*`depr201`(1 = very seldom, 4 = always)。我们预测问题定向应对方式的水平越高，学生的抑郁水平越低。我们首先对这两个变量作频次分析：
+
+``` {r}
+data("depress")
+# 频次表
+table(depress$cope110, depress$depr201)
+# 条件概率表
+dat <- data.frame(prop.table(table(depress$cope101, depress$depr201), margin = 1))
+names(dat) <- c("cope101", "depr201", "P")
+dat$cope101 <- as.numeric(dat$cope101)
+dat
+```
+
+严格地讲，我们需要将`depr201`作为有序类别变量进行统计分析。`depr201`有4个等级，等级越高表示抑郁症状越频繁。
+
+## 底层逻辑
+
+要考察问题应对对抑郁的预测作用，我们可以进行logistic回归或者probit回归。与二分结果变量不同，这里的`depr201`有多个类别，这里使用的logistic回归或者probit回归是对二分结果变量logistic回归与probit回归的拓展。如何拓展呢？要点有二：
+
+1. 由于结果变量有多个类别，我们可以通过“合并类别”的方式将结果变量转换为二分变量，然后进行logistic回归、probit回归。我们可以将`depr201 = 1`、`depr201 = 2`、`depr201 = 3`、`depr201 = 4`四个类别合并为`depr201 = 1`与`depr201 = (2|3|4)`两组，现在结果变量Y变成了二分变量，我们可以进行logistic回归与probit回归。
+
+2. 对于有k个分类水平的分类变量，我们需要进行总计k - 1次“合并”与回归分析。在本例中，我们需要进行3次回归分析。
+    
+    a. `depr201 = 1` vs `depr201 = (2|3|4)`两组
+    
+    b. `depr201 = (1|2)` vs `depr201 = (3|4)`两组
+    
+    c. `depr201 = (1|2|3)` vs `depr201 = 4`两组
+
+3. 对于上面的三次回归分析，我们假定它们线性回归部分自变量的斜率相等，但截距不相等。
+
+## Logistic回归
+
+接下来，我们使用`MASS`程序包中的`polr()`函数进行logistic回归：
+
+```{r}
+fit.polr <- polr(
+  factor(depr201) ~ cope101,
+  data = depress,
+  Hess = TRUE,
+  method = "logistic"
+)
+summary(fit.polr)
+confint(fit.polr)
+```
+
+结果显示，Y* = -0.449*cope101。该结果表明，(1)cope101越大，抑郁水平升级（由1升为2，或由2升为3，或由3升为4）的概率越小，B = -0.449，95% CI = [-0.826, -0.082]。(2)cope101每增加一个单位，抑郁水平升高一级的odds就变为原有水平的$e^{-0.449}$ = `r exp(-0.449)`倍。
+
+## 基于概率的解释
+
+对于logistic回归与probit回归结果的最高水平的解释是从概率上进行解释。接下来我们就根据回归分析的结果估算各个类别的概率。从上面的结果中，我们可以得到[1 vs (2|3|4)]、[(1|2) vs (3|4)]、[(1|2|3) vs 4]的回归方程：
+
+Y1 = -2.1804 - 0.449*cope101
+
+Y2 = -0.2163 - 0.449*cope101
+
+Y3 =  0.7723 - 0.449*cope101
+
+通过上述三个方程，我们可以基于logistic累积概率分布依次计算cope101取不同值时，depr201>=2、depr201>=3、depr201 =4的概率：
+
+$$P_{geq2} = P(depr201>=2) = \frac {1} {1 + e^{-1 \cdot (-2.1804 - 0.449 \cdot cope101)}} $$
+
+$$P_{geq3} = P(depr201>=3) = \frac {1} {1 + e^{-1 \cdot (-0.2163 - 0.449 \cdot cope101)}} $$
+
+$$P_{eq4} = P(depr201=4) = \frac {1} {1 + e^{-1 \cdot (0.7723 - 0.449 \cdot cope101)}} $$
+
+下面，我们绘制出上述三个回归方程的logistic累积概率分布曲线。在下图中，横坐标为`cope101`，纵坐标为概率，三条线分别表示上面的三个概率，绿色矩形圈出了`cope101`的有效取值范围1-5。
+
+::: callout-tip
+## `plogis(q)`
+
+在R中，我们可以直接使用`plogis()`函数计算概率。逻辑回归基于标准logistic分布，因此`plogis()`的参数`location` = 0，`scale` = 1。我们很少与`location`、`scale`这两个参数打交道，我们通常只跟`q`打交道。实际上，`q`就是logistic回归方程的结果变量$Y^*$，也就是logit。
+:::
+
+```{r}
+#| warning: false
+dat_dist <- data.frame(cope101 = seq(-15, 15, 1)) |> 
+  mutate(
+    P_geq2 = 1/(1 + exp(-1*(-2.1804 - 0.449*cope101))),
+    P_geq3 = 1/(1 + exp(-1*(-0.2163 - 0.449*cope101))),
+    # 下面的运算结果 = `plogis(0.7723 - 0.449*cope101)`
+    P_eq4 = 1/(1 + exp(-1*( 0.7723 - 0.449*cope101))),
+  ) |> 
+  pivot_longer(
+    cols = c(2:4),
+    values_to = "P_est",
+    names_to = "P"
+  )
+dat_area <- data.frame(
+  cope101 = seq(1, 5, 1),
+  P_est = 1
+)
+ggplot(dat_dist, aes(x = cope101, y = P_est)) +
+  geom_path(aes(colour = P)) +
+  geom_area(fill = "seagreen", alpha = 0.2, data = dat_area) +
+  scale_x_continuous(limits = c(-15, 15), 
+                     breaks = c(-15, -10, -5, 0, 1, 5, 10, 15),
+                     minor_breaks = NULL)
+```
+
+实际上，由于线性回归方程中的斜率相等，上述三条logistic概率曲线的形状是相同的。线性回归方程中的截距不同，这使得三条曲线沿着横坐标轴进行水平平移。
+
+基于上面计算的概率，我们可以通过简单的加减运算计算得到depr201不同类别的概率：
+
+$$P(depr201=1) = 1 -  P(depr201>=2)$$
+
+$$P(depr201=2) = P(depr201>=2) -  P(depr201>=3)$$
+
+$$P(depr201=3) = P(depr201>=3) -  P(depr201>=2)$$
+
+在`MASS`中，我们有一个更简便的计算结果变量不同类别的概率的方法：`predict()`。下面使用`predict()`基于前面得到的回归方程估计`depr201`不同取值的概率`P_est`，并以`cope101`为横坐标，以`depr201`不同取值的概率为纵坐标绘制出曲线，`depr201`不同取值的*实际概率P*用散点表示。
+
+```{r}
+dat_est_wide <- cbind(data.frame(cope101 = seq(-10, 10, 1)),
+                      predict(fit.polr, 
+                              newdata = data.frame(cope101 = seq(-10, 10, 1)), 
+                              type = "p"))
+dat_est_long <- pivot_longer(dat_est_wide,
+                        cols = c(2:5),
+                        values_to = "P_est",
+                        names_to = "depr201")
+dat_est_long$depr201 <- factor(dat_est_long$depr201)
+dat_area <- data.frame(
+  cope101 = seq(1, 5, 1),
+  P_est = 1
+)
+ggplot(mapping = aes(x = cope101)) +
+  geom_path(aes(y = P_est, colour = depr201), data = dat_est_long) +
+  geom_point(aes(y = P, colour = depr201, shape = depr201), size = 2, data = dat) +
+  geom_area(aes(y = P_est), fill = "seagreen", alpha = 0.2, data = dat_area) +
+  scale_x_continuous(limits = c(-10, 10), 
+                     breaks = c(-10, -5, 0, 1, 5, 10),
+                     minor_breaks = NULL) +
+  scale_y_continuous(minor_breaks = NULL)
+```
+
+可见，`P_est`对`P`的拟合还是不错的。
+
+## Probit回归
+
+```{r}
+fit2.polr <- polr(
+  factor(depr201) ~ cope101,
+  data = depress,
+  Hess = TRUE,
+  method = "probit"
+)
+summary(fit2.polr)
+confint(fit2.polr)
+```
+Probit结果的解释方法与logistic回归类似。Logistic回归Residual Deviance = 229.1354，AIC = 237.1354，Probit回归Residual Deviance = 228.9292，AIC = 236.9292，皆小于Logistic回归，该结果表明Probit回归的拟合更好。
+
+## 参考文献
+
+Muthen, B.O, Muthen, L.K., & Asparouhov, T. (2016). *Regression and Mediation Analysis using Mplus*. Los Angeles, CA: Muthen & Muthen.

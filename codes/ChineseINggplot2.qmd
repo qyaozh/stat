@@ -1,0 +1,118 @@
+---
+title: "ggplot2中文显示异常怎么办"
+subtitle: "How to display Chinese characters correctly in ggplot2"
+author: "Qingyao Zhang"
+date: last-modified
+format: html
+draft: true
+---
+
+本文首先通过一个案例演示ggplot2中文显示异常的原因与处理方法，最后总结出解决该问题的代码模板。
+对depress1数据中的变量depr01作条形图，用中文标注量尺的名称，最后使用ggsave()将图保存为pdf文件。注意：当图中包含中文时，建议将图保存为pdf文件，否则图中中文最终呈现出来的大小可能会随着图片分辨率的变化而缩放。
+
+```{r}
+# 加载程序包与数据
+data("depress1", package = "Keng")
+library(ggplot2)
+# 作图
+Sfig_3_1 <- ggplot(data = depress1, aes(x = depr01, fill = factor(gender))) +
+  geom_bar(position = "dodge") +
+  labs(x = "抑郁", y = "人数", fill = "性别")
+# 显示图
+Sfig_3_1
+```
+```{r}
+#| eval: false
+# 保存图文件
+ggsave("Sfig_3_1.pdf", width = 6, height = 4, dpi = 600)
+```
+
+
+查看R工作目录中Sfig_3_1.pdf文件，该文件里的中文显示效果见图3.1。中文显示异常的原因在于R无法识别电脑已经安装的中文字体。我们需要使用sysfonts与showtext包解决中文显示异常的问题。首先确保已安装sysfonts、showtext，之后加载showtext，并查询R目前可用的字体家族：
+
+```{r}
+# showtext会自动加载sysfonts
+library(showtext)
+# 查询R目前可用的字体家族
+font_families()
+```
+
+结果显示，R目前可用的字体家族为sans、serif、mono、wqy-microhei。wqy-microhei为文泉驿黑体，支持中文显示。运行以下代码，使用font_files()函数查询电脑已经安装的字体及其所在的文件夹位置。为节省篇幅，本文仅显示头五行信息。可见，font_files()为我们提供了字体文件的路径（存储位置）、文件名、家族名称等信息。
+
+```{r}
+font_df <- font_files()
+head(font_df, n = 5)
+```
+
+
+经查询，本地已经安装了思源宋体"Noto Serif SC"。接下来我们使用showtext.auto()函数作图，该函数会自动执行寻找、加载中文字体：
+
+```{r}
+# 使用showtext绘制文字
+showtext_auto()
+# 作图，修改量尺名称
+Sfig_3_2 <- Sfig_3_1
+# 绘制输出
+Sfig_3_2
+```
+```{r}
+#| eval: false
+# 保存图文件
+ggsave("Sfig_3_2.pdf", width = 6, height = 4, dpi = 600)
+```
+
+
+此时，Sfig_3_2.pdf文件中的中文可以正常显示。然而，showtext_auto()自动使用文泉驿黑体绘制中文，该字体可能不符合我们的需求。若要使用特定的字体，我们需要先将该字体加载到R中，然后设定使用该字体。下面的代码通过font_add()将电脑已经安装的思源宋体字体文件NotoSerifSC-Regular.ttf加载到R中。font_add()有两个参数。family参数的作用是为该字体家族命名，读者可以起一个自己喜欢的名称。regular参数是必需的，它的作用是声明常规字体的字体文件在本电脑中的位置（即完整路径）。最后，我们用font_families()查询字体是否加载成功。在使用font_add()加载字体后，font_families()输出的信息显示，R目前可用的字体增加了NotoSerifSC。
+
+```{r}
+font_add(family = "NotoSerifSC",
+regular = "C:/Windows/Fonts/NotoSerifSC-Regular.ttf")
+font_families()
+```
+
+接下来，我们使用该字体作图，并将图保存在Sfig_3_3.pdf中。注意比较Sfig_3_3.pdf与Sfig_3_2.pdf统计图里中文字体的区别。
+
+```{r}
+# 修改中文字体并作图
+Sfig_3_3 <- Sfig_3_2 +
+  theme(text = element_text(family = "NotoSerifSC"))
+# 绘制输出
+Sfig_3_3
+```
+```{r}
+#| eval: false
+# 保存图片
+ggsave("Sfig_3_3.pdf", width = 6, height = 4, dpi = 600)
+```
+
+
+通过与Sfig_3_2.pdf比较，我们可以发现Sfig_3_3.pdf中的字体已经更改为了思源宋体。注意，font_add()的作用仅对当前R进程有效。关闭R之后再次打开R，R将无法找到之前加载的字体。因此，每次打开R作图需要用到特定中文字体时，我们需要使用font_add()重新加载所需的字体。
+
+经过前文的演示，现将R代码模板总结如下，读者在使用时需要将数据、字体文件、字体名称、作图代码等替换成自己所需要的：
+
+```{r}
+#| eval: false
+# 加载程序包与数据
+data("depress", package = "Keng")
+library(ggplot2)
+library(showtext)
+# 查询R当前可用的字体
+font_families()
+# 查询电脑已经安装的字体及其所在的文件夹位置
+font_df <- font_files()
+head(font_df)
+# 加载电脑已经安装的中文字体
+font_add(family = "NotoSerifSC", 
+         regular = "C:/Windows/Fonts/NotoSerifSC-Regular.ttf")
+# 再次查询R当前可用的字体
+font_families()
+# 使用showtext绘制文字
+showtext_auto()
+# 使用中文标注量尺名称，设定字体，作图
+ggplot(data = depress1, aes(x = depr01, fill = factor(gender))) +
+  geom_bar(position = "dodge") +
+  labs(x = "抑郁", y = "人数", fill = "性别") +
+  theme(text = element_text(family = "NotoSerifSC"))
+# 保存图文件至R的工作目录
+ggsave("plot.pdf", width = 6, height = 4)
+```

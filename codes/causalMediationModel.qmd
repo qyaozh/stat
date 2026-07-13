@@ -1,0 +1,232 @@
+---
+title: "因果中介模型"
+subtitle: "Causal mediation model"
+draft: true
+---
+
+*设置本文R代码运行结果包含在灰色代码块中，且运行结果以`##`为前缀：*
+
+```{r}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = '##'
+)
+```
+
+## 案例与数据
+
+我们对学生的应对方式进行了干预，希望让学生更多地使用问题定向应对方式（下文简称“问题应对”），继而降低抑郁。`Keng`程序包中的`depress`数据集包含了相应的数据。其中，变量`intervene`表示实验分组，0表示控制组，1表示实验组。变量`cope_task2`表示第二个时间点的问题应对。变量`depr3`表示第三个时间点的抑郁。
+
+```{r}
+#| results: hold
+library(Keng)
+data("depress")
+head(depress[,c("intervene", "cope_task2", "depr3")])
+```
+
+## 常规的中介模型分析
+
+根据假设，**干预**通过**问题应对**影响**抑郁**，这是一个中介模型，如下图所示：
+
+```{mermaid}
+flowchart LR
+  A[intervene] --> B[cope_task2]
+  B --> C[depr3]
+  A --> C[depr3]
+```
+
+我们首先使用线性回归估计总效应：
+
+```{r}
+summary(lm(depr3 ~ intervene, depress))
+```
+
+可得，干预对抑郁的效应为0.202。一般而言，这是干预对抑郁的总效应。
+
+我们可以使用`lavaan`程序包建立中介模型，计算直接效应与中介效应：
+
+```{r}
+library(lavaan)
+model <- '
+cope_task2 ~ a*intervene
+
+# 注意，直接效应所对应的回归系数用 c_ 表示。
+depr3 ~ c_*intervene + b*cope_task2
+# 间接效应
+i := a*b
+d := c_
+t := i + d
+'
+fit <- sem(model, depress)
+summary(fit)
+```
+
+可得，间接效应为0.053，直接效应为0.149，总效应为0.202。该总效应与前文通过回归分析计算得到的总效应一致。
+
+实验研究的目的是证明因果效应，我们上面得到的直接效应、间接效应是因果效应吗？因果推断的实验原则是：原因（自变量）应当是通过实验操纵的，实验分组应当是随机的。在上面的中介分析中，自变量`intervene`是实验操纵的，且实验分组是随机的。但是，中介变量`cope_task2`不是实验操纵的。`cope_task2`与`depr3`都是通过问卷测量得到的，中介分析得到的它们之间的关系本质上仍是相关关系。因此，前文计算得到的间接效应不是因果效应。
+
+如何得到因果效应？最简单的方法是实验法：我们再进行一个实验，操纵`cope_task2`，继而观察`cope_task2`对`depr3`的效应。
+
+另一种方法是统计法，我们采用另一种更严谨的统计方法近似地计算得到因果性的直接效应、间接效应。接下来，本文就介绍这种方法。
+
+## 基于反事实框架，重新定义因果性的直接效应与间接效应
+
+首先，研究者基于反事实框架重新对直接效应、间接效应进行定义(Miočević et al., 2018; Muthén & Asparouhov, 2015)。
+
+什么是因果效应？因果效应就是实验组与对照组在结果变量Y上的差异。通过随机分组，实验组与对照组之间只在实验处理上存在差异，在其他所有变量上没有差异，两组在结果变量上的差异只能是实验处理导致的。
+
+什么是因果性的直接效应？我们用X、M、Y泛指自变量、中介变量、结果变量。因果性的直接效应指的是，当中介变量M保持不变时，自变量X的效应，即实验处理导致结果变量Y发生的变化。自变量X表示实验分组，X=0表示控制组，X=1表示实验组，因此，换言之，因果性的直接效应指的是[当中介变量M保持不变]{.text-primary}时，X由0变成1导致Y发生的变化。显然，这一定义是反事实的，我们无法直接观察到上述效应，因为根据我们的中介模型假设，[当X由0变成1时，M肯定会发生变化]{.text-primary}。
+
+因果性的间接效应指的是，在[自变量X保持不变]{.text-primary}时，中介变量M由对照条件变成实验条件所导致的间接效应。这一定义同样是反事实的，因为[当X保持不变时，M无法从对照条件变成实验条件]{.text-primary}。
+
+另外，我们需要注意：对于控制组和实验组，中介变量M与Y的关系可能不同。下面，我们通过线性回归分别估计控制组和实验组中`cope_task2`与`depr3`的关系：
+
+```{r}
+summary(lm(depr3 ~ cope_task2, depress[depress$intervene == 0, ]))
+summary(lm(depr3 ~ cope_task2, depress[depress$intervene == 1, ]))
+```
+
+可见，在控制组，`cope_task2`对`depr3`的效应是-0.308，在实验组，`cope_task2`对`depr3`的效应是-0.222。
+
+实验组与控制组的中介变量M并不同质，但常规的中介模型却将实验组与控制组的数据糅在一起，继而估计中介变量M与结果变量Y的关系，这样估计得到的效应并不符合基于反事实框架所定义的因果性的直接效应与间接效应。我们应当具体情况具体分析。
+
+接下来，我们用公式定义因果性的直接效应与间接效应。基于反事实框架，我们可以将X对Y的效应进行如下分解：
+
+- 受控直接效应(controlled direct effect, CDE)
+
+    `CDE = Y(X=1, M) - Y(X=0, M)`，CDE为当M保持不变时X由0变成1时Y的变化量。
+
+- 纯粹自然直接效应(pure natural direct effect, PNDE)
+
+    `PNDE = Y(X=1, M(X=0)) - Y(X=0, M(X=0))`，PNDE为当M为控制条件下的M时X由0变成1时Y的变化量。
+
+- 总自然直接效应(total natural direct effect, TNDE)
+
+    `TNDE = Y(X=1, M(X=1)) - Y(X=0, M(X=1))`，TNDE为当M为实验条件下的M时X由0变成1时Y的变化量。
+
+- 纯粹自然间接效应(pure natural indirect effect, PNDE)
+
+    `PNIE = Y(X=0, M(X=1)) - Y(X=0, M(X=0))`，PNIE为当X=0时M由控制条件下的M变成实验条件下的M时Y的变化量。
+
+- 总自然直接效应(total natural direct effect, TNDE)
+
+    `TNIE = Y(X=1, M(X=1)) - Y(X=1, M(X=0))`，TNIE为当X=1时M由控制条件下的M变成实验条件下的M时Y的变化量。
+
+- 总效应
+ 
+    `TE = Y(X=1, M(X=1)) - Y(X=0, M(X=0))`，TE为[X从0变成1]{.text-primary}且[M从控制条件下的M变成实验条件下的M]{.text-primary}时Y的变化量。由上面的公式可得，`TE = TNDE + PNIE = PNDE + TNIE`。
+
+可见，上述定义实现了“具体情况具体分析”，即对X=0或1、M为控制条件或实验条件这些不同的情况分别进行了定义。上述定义将因果效应定义为结果变量的差异，这一定义不考虑变量间关系的形式。我们如何估计这些效应呢？
+
+## 更严谨的统计方法：因果中介模型
+
+因果中介模型在统计上就是*有调节的中介模型*(见下图)。
+
+``` mermaid
+%% mermaid syntax
+flowchart LR
+  A[intervene] --> B[cope_task2] --- C@{ shape: f-circ, label: "interaction" } --> D[depr3]
+  A --> C & D
+```
+
+自变量、中介变量、结果变量之间的关系可以表示为以下几个回归方程：
+
+`Y = i1 + c*X + e1 (1)`
+
+在上式中，`i1`是截距，`c`是X对Y的回归系数，`e1`是残差。一般而言，`c`是X对Y的总效应（total effect, TE）。
+
+`M = i2 + a*X + e2 (2)`
+
+在上式中，`i2`是截距，`a`是X对M的回归系数，`e2`是残差。
+
+`Y = i3 + c_*X + b*M + d*X*M + e3 (3)`
+
+在上式中，`i3`是截距，`c_`是X对Y的回归系数，`b`是M对Y的回归系数，`d`是X与M的交互项`X*M`对Y的回归系数，`e3`是残差。
+
+通过合并回归方程(3)的同类项，并将(2)代入，我们可以得到：
+
+X对Y的直接效应为：`c_ + d*M = c_ + d*(i2 + a*X) (4)`，该效应被称为受控直接效应（controlled direct effect，CDE），该名字表达了X对Y的直接效应受到了M的控制。
+
+M对Y的效应为：`b + d*X (5)`，
+
+X经M对Y的间接效应为：`a*(b + d*X) (6)`。
+
+注意，由于数据是实验数据，X的取值为0或1，所以我们可以将X的值直接代入上面的公式，之后，我们将得到：
+
+- 对于控制组，X = 0，
+
+  - X对Y的直接效应为：`c_ + d*M = c_ + d*(i2 + a*X) = c_ + d*i2`，该效应被称为纯粹自然直接效应（pure natural direct effect, PNDE），即在未经实验处理的自然状态下，X对Y的直接效应。
+
+  - M对Y的效应为：`b + d*X (5) = b`。
+
+  - X经M对Y的间接效应为：`a*(b + d*X)  = a*b`，该效应被称为纯粹自然间接效应（pure natural indirect effect, PNIE），即在未经实验处理的自然状态下，X经M对Y的间接效应。
+
+- 对于实验组，X = 1，
+
+  - X对Y的直接效应为：`c_ + d*M = c_ + d*(i2 + a*X) = c_ + d*(i2 + a)`，该效应被称为总自然直接效应（pure natural direct effect, PNDE），即，在实验处理之后，在纯粹自然直接效应的基础上叠加了实验处理带来的效应后，X对Y的总直接效应。
+
+  - M对Y的效应为：`b + d*X (5) = b + d`。
+
+  - X经M对Y的间接效应为：`a*(b + d*X)  = a*(b + d)`，该效应被称为总自然间接效应（pure natural direct effect, PNDE），即，在实验处理之后，在纯粹自然间接效应的基础上叠加了实验处理带来的效应后，X经M对Y的总间接效应。
+
+一般而言，总效应 `TE = PNDE + TNIE = TNDE + PNIE`。
+
+接下来，我们使用`depress`数据，计算`intervene`经`cope_task2`影响`depr3`的因果性直接效应与间接效应。
+
+```{r}
+model <- '
+cope_task2 ~ i2*1 + a*intervene
+
+# 注意，直接效应所对应的回归系数用 c_ 表示。
+depr3 ~ i3*1 + c_*intervene + b*cope_task2 + d*intervene:cope_task2
+
+# 纯粹自然直接效应
+PNDE := c_ + d*i2
+
+# 纯粹自然间接效应
+PNIE := a*b
+
+# 总自然直接效应
+TNDE := c_ + d*(i2 + a)
+
+# 总自然间接效应
+TNIE := a*(b + d)
+
+# 总效应
+T1 := PNDE + TNIE
+T2 := TNDE + PNIE
+'
+fit <- sem(model, depress)
+summary(fit)
+```
+
+## 因果效应之所以成立的“四个没有”假定
+
+这样的统计把戏真能证明因果效应吗？研究者指出，这需要满足下面的“四个没有”假定(Miočević et al., 2018; Muthén & Asparouhov, 2015)：
+
+1.  X与Y的关系没有未测量的混淆变量。
+2.  M与Y的关系没有未测量的混淆变量。
+3.  X与M的关系没有未测量的混淆变量。
+4.  M与Y的关系的混淆变量（未测量或已测量）没有受到X的影响。
+
+在实验研究中，X经过了随机分组，因此上述假定中的1与3可以得到满足。当假定2或4不成立时，可使用*工具变量法*等方法 (MacKinnon & Pirlott, 2015)。
+
+## *因果中介模型*与*有调节的中介模型*的比较
+
+有调节的中介模型在证明调节效应显著之后会进一步检验简单效应、简单中介效应。前文所定义的`PNDE`、`TNDE`是X的简单效应，`PNIE`、`TNIE`是X经M影响Y的简单间接效应。这里的怪异之处Y的回归方程中只包含一个`X*M`交互项，但`X*M`交互项既被用来计算X的简单效应——这被解释为M调节了X与Y的关系，又被用来计算X经M影响Y的简单中介效应——这被解释为X调节了M与Y的关系，最终导致`TNDE`与`PNDE`、`TNIE`有冗余。因此，将`TNDE`与`PNDE`或`TNIE`相加没有意义。
+
+## 总效应分解方式的取舍
+
+TE有两种分解方式：`TE = PNDE + TNIE = TNDE + PNIE`，但研究者通常使用的是`TE = PNDE + TNIE`这种分解方式(Muthén & Asparouhov, 2015)。`TE = PNDE + TNIE`这种分解方式可以理解为：X对Y的总效应 = M[不起作用时]{.text-primary}纯粹由X导致的直接效应 + M[发挥作用时]{.text-primary}总的间接效应。
+
+## 因果中介模型的适用情形
+
+尽管因果中介模型最初被用来估计实验数据的因果效应，Muthén和Aparouhov (2015)指出，自变量X不仅可以是实验分组（二分变量），也可以是连续变量。中介变量M与结果变量Y可以是分类变量、顺序变量，结果变量Y也可以是计数变量、生存结局变量。研究者也可以在模型中加入其他的协变量与调节效应。
+
+## 参考文献
+
+MacKinnon, D. P., & Pirlott, A. G. (2015). Statistical approaches for enhancing causal interpretation of the M to Y relation in mediation analysis. *Personality and Social Psychology Review*, *19*(1), 30-43.
+
+Miočević, M., Gonzalez, O., Valente, M. J., & MacKinnon, D. P. (2018). A tutorial in Bayesian potential outcomes mediation analysis. *Structural Equation Modeling: A Multidisciplinary Journal*, *25*(1), 121-136.
+
+Muthén, B., & Asparouhov, T. (2015). Causal effects in mediation modeling: An introduction with applications to latent variables. *Structural Equation Modeling: A Multidisciplinary Journal*, *22*(1), 12-23.

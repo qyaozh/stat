@@ -1,0 +1,48 @@
+---
+title: "混合模型"
+subtitle: "Mixture model"
+draft: true
+---
+
+## 什么是混合模型
+
+*混合模型*指的是包含*分类潜变量*的模型。
+
+混合模型包含两部分：*测量模型*与*结构模型*。
+
+测量模型是多元回归模型，多元回归模型的自变量是分类潜变量，多元回归模型的结果变量是外显变量，这些外显变量被称为*潜类别指标*。多元回归模型界定了分类潜变量与其指标之间的关系。下图是一个测量模型，`class`是分类潜变量，`indicator1`至`indicator5`是其潜类别指标。数据中存在`indicator1`至`indicator5`这些变量，但不存在`class`这一变量，`class`是通过`indicator1`至`indicator5`推断出来的。
+
+```{mermaid}
+flowchart TB
+    A((class)) ---> B[indicator1] & C[indicator2] & D[indicator3] & E[indicator4] & F[indicator5]
+```
+
+[潜类别分析 (Latent Class Analysis, LCA)]{.text-primary}是测量模型。当潜类别指标是连续变量时，潜类别分析常被称为[潜剖面分析 (Latent Profile Analysis, LPA)]{.text-primary}，即潜剖面分析是潜类别分析的特例。
+
+结构模型界定了三种关系：分类潜变量之间的关系，显变量之间的关系，分类潜变量与显变量之间的关系。针对不同类型的结果变量，结构模型采用不同的统计方法检验变量间的关系：
+
+|结果变量的类型|统计方法|
+|:-:|:-:|
+连续变量|一般线性回归
+无序类别变量|多项逻辑回归
+截断膨胀变量|截断正态回归
+二分类变量，有序分类变量|逻辑回归
+计数变量|泊松或零膨胀泊松回归方程
+
+: 结构模型用到的统计方法
+
+## Mplus中混合模型的拓展
+
+- 多组分析。混合模型的多组分析使用`VARIABLE`中的`KNOWNCLASS`命令。
+- 缺失值。可用`LISTWISE`。
+- `SUBPOPULATION`的作用是选择部分数据用来分析。
+- 嵌套数据。使用`ANALYSIS`中的`TYPE=COMPLEX`，配合使用`VARIABLE`中的`STRATIFICATION`、`CLUSTER`或`WEIGHT`。
+- 潜变量的交互作用。使用`MODEL`中的`|`与`XWITH`命令界定。
+- 随机斜率。用`MODEL`中的`|`与`ON`。
+- 参数限制。用`MODEL CONSTRAINT`命令。
+- 算法。`ANALYSIS`中的`ESTIMATOR`。
+- Bootstrap标准误。 `ANALYSIS`中的`BOOTSTRAP`。
+- Bootstrap置信区间。`ANALYSIS`中的`BOOTSTRAP`，配合`OUTPUT`中的`CINTERVAL`。
+- 参数限制检验。`MODEL`中的`MODEL TEST`，或`MODEL CONSTRAINT`配合`Wald chi-square test`。
+- 潜类别之间均值的恒等性。使用`AUXILIARY`。
+

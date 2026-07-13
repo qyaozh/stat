@@ -1,0 +1,438 @@
+---
+title: "t检验"
+subtitle: "t test"
+author: "Qingyao Zhang"
+format: 
+  html: default
+  pdf: 
+    pdf-engine: xelatex
+    CJKmainfont: "HarmonyOS Sans SC"
+    lang: zh
+    toc: true
+    css: styles.css
+    date: last-modified
+    number-sections: true
+    code-line-numbers: true
+    tbl-cap-location: top
+    link-external-newwindow: true
+draft: true
+---
+
+```{r}
+library(Keng)
+data("well")
+library(DescTools)
+library(ggplot2)
+library(effectsize)
+# 使用函数cohens_d()
+library(pwr)
+# 使用函数pwr.t.test()
+```
+
+```{r}
+# 总体
+mu <- mean(well$flourish1)
+sigma <- sd(well$flourish1)
+mu;sigma
+# 女生样本
+well_girl <- well[well$gender100 == 1,]
+n_girl <- nrow(well_girl)
+M_girl <- mean(well_girl$flourish1)
+s_girl <- sd(well_girl$flourish1)
+n_girl; M_girl; s_girl
+```
+
+## 单样本t检验
+
+当总体未知时，用t检验代替z检验。z检验中，z服从标准正态分布。在t检验中，t服从t分布，以H0假设的t分布为依据进行统计检验。
+
+单样本z检验与单样本t检验的区别在于计算标准误的方法：单样本z检验使用总体的标准差计算抽样分布的标准误，而单样本t检验使用样本的标准差推断总体的标准差，用样本的标准差计算抽样分布的标准误。
+
+\begin{align}
+SE &= \frac{s}{\sqrt{n}} \\
+t &= \frac{M - \mu}{SE}
+\end{align}
+
+### 自由度
+
+在进行统计推断时，单样本z检验基于z分数的标准正态分布作出决策。但是，t检验计算出来的t分数未必服从正态分布。t分数服从t分布。样本分布接近正态分布的程度由样本量决定，而t分布接近z分布的程度由自由度（degree of freedom）决定。自由度指的是在给定条件下能够自由变化的观测数值的数量。
+
+假设三名学生的幸福感得分分别是x、y、x，其均值为5。其中两名学生的幸福感得分x、y可以是任意值，或者说，x与y可以自由变化。但是，三名学生的均值固定为5，第三名学生的幸福感得分z不能自由变化。如果我们猜测x = 4，y = 5，那么，z必然是6。换句话说，x、y、z三个观测数值中能够自由变化的只有两个，因此，df = 2。
+
+单样本t检验需要计算1个样本均值，在均值不变的条件下，能够自由变化的观测值的数量为n - 1。下图呈现了不同自由度的t分布与正态分布的关系，可见，自由度越大，t分布越接近正态分布。当自由度较小时，t分布的尾部比标准正态分布厚，t分布拒绝域的临界值的绝对值比标准正态分布更大。
+
+```{r}
+# 临界值
+LLz <- qnorm(0.025)
+ULz <- qnorm(0.975)
+LLt <- qt(0.025, df = 2)
+ULt <- qt(0.975, df = 2)
+
+# 正态概率密度曲线数据
+datz <- data.frame(
+  x = seq(-5, 5, 0.01),
+  Density = dnorm(seq(-5, 5, 0.01)),
+  Distribution = rep("H0标准正态分布", 1001))
+# 正态尾部数据
+datzTailLeft <- datz[datz$x <= LLz, ]
+datzTailLeft$Area <- "标准正态分布左尾2.5%"
+datzTailRight <- datz[datz$x >= ULz, ]
+datzTailRight$Area <- "标准正态分布右尾2.5%"
+datzTail <- rbind(datzTailLeft, datzTailRight)
+
+# t概率密度曲线数据
+datt <- data.frame(
+  x = seq(-5, 5, 0.01),
+  Density = dt(seq(-5, 5, 0.01), 2),
+  Distribution = rep(paste0("H0 t(", 2, ")分布"), 1001))
+# t尾部数据
+dattTailLeft <- datt[datt$x <= LLt, ]
+dattTailLeft$Area <- paste0("t(", 2, ")分布左尾2.5%")
+dattTailRight <- datt[datt$x >= ULt, ]
+dattTailRight$Area <- paste0("t(", 2, ")分布右尾2.5%")
+dattTail <- rbind(dattTailLeft, dattTailRight)
+
+dat <- rbind(datz, datt)
+dat$Distribution <- factor(dat$Distribution, 
+                           levels = c("H0标准正态分布", paste0("H0 t(", 2, ")分布")))
+
+plot <- ggplot(dat, aes(x, Density)) +
+  geom_path(aes(color = Distribution)) +
+  geom_area(aes(fill = Area), data = dattTail, alpha = 0.5) + 
+  geom_area(aes(fill = Area), data = datzTail, alpha = 0.5) + 
+  geom_vline(xintercept = 2, linetype = 3) +
+  annotate("text", 2, 0, label = round(2, 2), angle = 90) +
+  theme_classic(base_size = 11)
+plot
+```
+
+### 基于R的单样本t检验
+
+下面，我们使用单样本t检验比较女生样本均值与大学生总体均值的差异。基于公式计算的结果与函数t.test()的检验结果完全相同。
+
+```{r}
+# 使用公式
+t <- (M_girl - mu)/(s_girl/sqrt(n_girl))
+df <- n_girl - 1
+p <- 2*pt(t, df)
+t; df; p
+# 使用t.test()
+t.test(well_girl$flourish1, mu = mu)
+```
+
+### 效应量  
+
+单样本 t 检验只是说明了样本均值与假设总体的均值是否有差异，但并没有说明这种差异有多大。样本均值
+与假设总体的均值的差值可以说明两个均值的差异的大小，但这一差值会受到单位的影响。作为一种统计指标，效应量（effect size）既能衡量样本均值与假设总体的均值的差异的大小，同时又不受单位的影响。
+我们使用 Cohen d 衡量样本均值与假设总体的均值的差异的大小。z 分数是原始分数的标准化分数，而
+Cohen d 是原始距离的标准化距离。Cohen d 的公式如下：
+
+$$
+d = \frac{M-\mu}{s}
+$$
+
+在R语言中，我们可以使用相应的程序包与函数计算效应量。下面的代码计算了单样本t检验的效应量：
+
+```{r}
+cohens_d(x = "flourish1", data = well_girl, mu = mu)
+```
+
+### 计划样本量
+
+已知单样本t检验的效应量为-0.04。若要使其达到显著性水平，且统计检验力大于等于0.80，所需要的最小样本量为：
+
+```{r}
+pwr.t.test(d = -0.04, power = 0.8, type = "one.sample")
+```
+
+## 独立样本t检验
+
+### 研究问题
+
+性别是否影响幸福感？不同性别的幸福感水平有差异吗？哪种性别的幸福感水平更高？要回答上述问题，我们需要比较不同性别的幸福感水平。
+
+### 数据格式
+
+首先，注意观察独立样本t检验所要分析的数据的格式。可见，性别与幸福感各占一列，不同性别的幸福感得分处于不同的行。即，不同性别的幸福感得分是相互独立的、没有关联的。
+
+```{r}
+# 使用dplyr程序包整理数据
+library(dplyr)
+# |>管道符，其作用是简化代码、减少输入
+# |>的作用是将左侧代码输出的结果传递给右侧函数的第1个参数
+well |> 
+  # 按性别分组
+  group_by(gender100) |> 
+  # 每个性别选取头6名被试
+  slice_head(n = 6) |> 
+  # 选择性别与幸福感这两个变量
+  select(gender100, flourish101)
+```
+
+
+### 描述性统计
+
+每种性别包含多名学生，我们其均值作为每种性别幸福感水平的代表。以W研究中第1个时间点的幸福感flourish1为例，我们所要分析的数据的格式如下。可见，性别与幸福感这两个变量各占一列。不同性别学生的幸福感得分位于不同的行，这意味着不同性别学生的幸福感得分是相互独立的、彼此无关的。我们可以分别计算男生、女生的均值与标准差。计算可得，女生幸福感水平的均值为5.28（SD = 0.92），男生幸福感水平的均值为5.37（SD = 0.95）。表面上看，男生幸福感水平高于女生。但是，这种差异是否具有统计学意义，我们仍需进行统计检验。
+
+```{r}
+# 男生样本
+well_boy <- well[well$gender100 == 0,]
+(n_boy <- nrow(well_boy))
+(M_boy <- mean(well_boy$flourish1))
+(s_boy <- sd(well_boy$flourish1))
+```
+
+### 假设
+
+按照假设检验的步骤，我们首先需要提出H0与H1假设：
+
+H0：不同性别的幸福感水平没有差异。
+H1：不同性别的幸福感水平有差异。
+
+我们用D表示女生均值与男生均值的差值，那么，H0与H1假设可以重新表述为：
+
+H0：$D = 0$。
+H1：$D \neq 0$。
+
+假设检验以H0为靶目标，力图证明H0是错的。进行统计检验时，我们以H0分布为参考。H0分布是差值D的抽样分布，该分布的均值（中心）为0。独立样本t检验就是将两个独立样本均值的实际差值放在H0分布中，从而判断实际差值与0是否具有显著差异。
+
+### 公式
+
+t的公式为：
+
+$$
+t = \frac{(M_1-M_2)-0}{SE}
+$$
+
+上述独立样本t检验的标准误的计算分两种情况：
+
+1. 当两个独立样本的方差**相等**时，使用合并方差（pooled variance）计算标准误：
+
+\begin{align}
+SE &= \sqrt{\frac{s_{pooled}^2}{n_1} + \frac{s_{pooled}^2}{n_2}} \\
+s_{pooled}^2 &= \frac{SS_1+SS_2}{df_1+df_2} \\
+df_1 &= n_1 - 1 \\
+df_2 &= n_2 - 1 \\
+n &= n_1 + n_2 \\
+df &= df_1 + df_2
+\end{align}
+
+2. 当两个独立样本的方差**不相等**时，使用两个独立样本的方法计算标准误，同时对自由度进行校正：
+
+\begin{align}
+SE &= \sqrt{\frac{s_1^2}{n_1} + \frac{s_2^2}{n_2}} \\
+n &= n_1 + n_2 \\
+df &= \frac{(\frac{s_1^2}{n_1} + \frac{s_2^2}{n_2})^2}{\frac{1}{n_1-1}(\frac{s_1^2}{n_1})^2 + \frac{1}{n_2-1}(\frac{s_2^2}{n_2})^2}
+\end{align}
+
+### 使用公式
+
+假定两个独立样本的方差相等, 使用公式检验：
+
+```{r}
+n <- nrow(well)
+df_boy <- n_boy - 1
+df_girl <- n_girl - 1
+# df <- df_boy + df_girl
+df <- n - 2
+SS_boy <- sum((well_boy$flourish1-mean(well_boy$flourish1))^2)
+SS_girl <- sum((well_girl$flourish1-mean(well_girl$flourish1))^2)
+v_pooled <- (SS_boy + SS_girl)/df
+s_pooled <- sqrt(v_pooled)
+SE <- sqrt(v_pooled/n_boy + v_pooled/n_girl)
+t <- (M_boy - M_girl)/SE
+p <- pt(t, df, lower.tail = FALSE)*2
+t; df; p
+```
+
+假定两个独立样本的方差不相等, 使用公式检验：
+
+```{r}
+SE_unequal <- sqrt(var(well_boy$flourish1)/n_boy + var(well_girl$flourish1)/n_girl)
+t_unequal <- (M_boy - M_girl)/SE_unequal
+df_unequal <- (var(well_boy$flourish1)/n_boy +
+var(well_girl$flourish1)/n_girl)^2/
+(1/(n_boy-1)*(var(well_boy$flourish1)/n_boy)^2 +
+1/(n_girl-1)*(var(well_girl$flourish1)/n_girl)^2)
+p_unequal <- pt(t_unequal, df_unequal, lower.tail = FALSE)*2
+t_unequal
+df_unequal
+p_unequal
+```
+
+### 使用函数`t.test()`
+
+我们可以使用函数`t.test()`进行独立样本t检验。使用函数`t.test()`进行独立样本t检验的参数设定方法有两种，第一种是设定两个独立样本的数据：
+
+```{r}
+t.test(well_girl$flourish1, well_boy$flourish1, var.equal = TRUE)
+t.test(well_girl$flourish1, well_boy$flourish1, var.equal = FALSE)
+```
+
+第二种方法是使用公式表示幸福感与性别的关系。H1假设为不同性别学生的幸福感水平有差异，换言之，幸福感水平会受到性别的影响，幸福感水平是结果变量，而性别是自变量。在R语言中，我们经常使用符号`~`表示变量之间的因果关系，结果变量放在符号`~`的左侧，自变量放在符号`~`的右侧。在函数t.test()中，我们可以使用`~`界定幸福感与性别的关系，继而进行独立样本t检验。
+
+```{r}
+# 假定不同性别幸福感的方差相等
+t.test(flourish1 ~ gender100, data = well, var.equal = TRUE)
+```
+
+### 效应量
+
+我们使用 Cohen d 作为独立样本 t 检验的效应量。
+
+若两个独立样本的方差相等，使用合并标准差计算Cohen d：
+
+$$
+d = \frac{M_1-M_2}{s_{pooled}}
+$$
+若两个独立样本的方差不相等，使用两个独立样本的标准差的均值计算Cohen d：
+
+$$
+d = \frac{M_1-M_2}{\sqrt{\frac{s_1^2+s_2^2}{2}}}
+$$
+### 使用公式计算效应量
+
+```{r}
+# 假定方差相等
+(d <- (M_boy - M_girl)/s_pooled)
+# 假定方差不相等
+(d <- (M_boy - M_girl)/(sqrt((var(well_boy$flourish1)+var(well_girl$flourish1))/2)))
+```
+### 使用cohens_d()计算效应量
+
+上式中符号的含义与前文一致。计算 Cohen d 的 R 代码如下：
+
+```{r}
+cohens_d(flourish1 ~ gender100, data = well, pooled_sd = TRUE)$Cohens_d
+cohens_d(flourish1 ~ gender100, data = well, pooled_sd = FALSE)$Cohens_d
+```
+
+### 计划样本量
+
+已知d = 0.10，要达到显著性水平，且统计检验力大于等于0.80，那么所需样本量至少为：
+
+```{r}
+pwr.t.test(d = 0.10, power = 0.80, type = "two.sample")
+```
+
+## 配对样本t检验
+
+### 研究问题
+
+在Well研究的三次调查中，实现论幸福感的变化趋势是怎样的？
+
+### 数据格式
+
+首先查看我们所要分析的变量数据的格式。
+
+```{r}
+library(Keng)
+head(well[c("flourish1","flourish2","flourish3")])
+```
+
+可见，三次调查中的实现论幸福感位于三个不同的列，同一个被试的实现论幸福感位于同一行。个体的幸福感水平受到个体自身稳定特征的影响，因此，三次调查中的实现论幸福感是相关的，而不是独立的。要比较不同时间点的实现论幸福感，我们不能使用独立样本t检验，而要使用相关样本t检验。由于相关样本t检验所处理的变量是配对的，相关样本t检验又被称为相关样本t检验。
+
+### 描述性统计
+
+计算并比较三个时间点实现论幸福感的水平：
+
+```{r}
+sapply(well[c("flourish1","flourish2","flourish3")], mean)
+sapply(well[c("flourish1","flourish2","flourish3")], sd)
+```
+
+### 假设
+
+以前两个时间点的比较为例：
+
+H0: flourish1与flourish2没有差异。
+
+H1: flourish1与flourish2有差异。
+
+flourish1与flourish2的均值的差值为D，那么：
+
+H0: $D = 0$。
+
+H1: $D \neq 0$ 。
+
+配对样本t检验的本质是将两个时间点实现论幸福感均值的实际差值$D$放在$\mu_D = 0$的H0抽样分布中，比较$D$与0的差异。
+
+### 公式
+
+常规公式：
+
+\begin{align}
+t &= \frac{(M_1 - M_2) - 0}{SE_D} \\
+SE_D &= \sqrt{\frac{Var(M_1 - M_2)}{n}} \\
+Var(D) &= Var(x_1)+Var(x_2)-Cov(x1, x2) \\
+&= s_1^2 + s_2^2 - 2rs_1s_2 \\
+df & = n - 1
+\end{align}
+
+将配对样本t检验视为对D进行单样本t检验：
+
+\begin{align}
+t &= \frac{M_D-\mu_D}{SE_D} \\
+D &= x_{1} - x_{2} \\
+t &= \frac{(M_1 - M_2) - 0}{SE_D} \\
+SE_D &= \frac{s_D}{\sqrt{n}} \\
+&= \sqrt{\frac{Var(D)}{n}}
+\end{align}
+
+### 使用公式
+
+使用常规公式：
+
+```{r}
+M1 <- mean(well$flourish1)
+M2 <- mean(well$flourish2)
+SE_D <- sqrt((var(well$flourish1) + var(well$flourish2) - 2*cov(well$flourish1, well$flourish2))/n)
+(t <- (M1 - M2)/SE_D)
+(df <- n - 1)
+(p <- pt(abs(t), df, lower.tail = 0)*2)
+```
+
+将配对样本t检验视为对D的单样本t检验：
+
+```{r}
+well$D <- well$flourish1 - well$flourish2
+SE_D <- sd(well$D)/sqrt(n)
+(t <- mean(well$D)/SE_D)
+(df <- n - 1)
+(p <- pt(abs(t), df, lower.tail = 0)*2)
+```
+
+### 使用函数t.test()
+
+```{r}
+t.test(well$flourish1, well$flourish2, paired = 1)
+```
+
+### 效应量
+
+我们使用 Cohen d 作为配对样本 t 检验的效应量。Cohen d 的公式如下：
+
+$$
+d = \frac{D-0}{s_D}
+$$
+
+使用公式计算效应量：
+
+```{r}
+(d <- (M1-M2)/sd(well$D))
+```
+
+### 使用函数计算效应量
+
+```{r}
+cohens_d(x = well$flourish1, y = well$flourish2, paired = TRUE)$Cohens_d
+repeated_measures_d(x = well$flourish1, y = well$flourish2, method = "z", adjust = FALSE)$d_z
+```
+
+### 计划样本量
+
+```{r}
+pwr.t.test(d = 0.1, power = 0.80, type = "paired")
+```
+
+全文到此结束。

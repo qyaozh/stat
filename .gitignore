@@ -7,15 +7,12 @@
 **/*.quarto_ipynb
 
 _quarto.yml
-
-/images/
-
-/index.qmd
-
-/readme.qmd
-
-/shiny-server/
-
 stat.Rproj
-
 styles.css
+/index.qmd
+/readme.qmd
+/Keng.qmd
+/images/
+/shiny-server/
+/_freeze/
+**/*_cache/
