@@ -8,8 +8,8 @@
 
 _quarto.yml
 /images/
-index.qmd
-readme.qmd
+/index.qmd
+/readme.qmd
 /shiny-server/
 stat.Rproj
 styles.css
