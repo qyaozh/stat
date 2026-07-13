@@ -1,0 +1,15 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+/.quarto/
+**/*.quarto_ipynb
+
+_quarto.yml
+/images/
+index.qmd
+readme.qmd
+/shiny-server/
+stat.Rproj
+styles.css
