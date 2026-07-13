@@ -4,17 +4,17 @@ subtitle: "Representativeness and extremity"
 author: "Qingyao Zhang"
 format: 
   html: default
-  pdf: 
-    pdf-engine: xelatex
-    CJKmainfont: "HarmonyOS Sans SC"
-    lang: zh
-    toc: true
-    css: styles.css
-    date: last-modified
-    number-sections: true
-    code-line-numbers: true
-    tbl-cap-location: top
-    link-external-newwindow: true
+  # pdf: 
+  #   pdf-engine: xelatex
+  #   CJKmainfont: "HarmonyOS Sans SC"
+  #   lang: zh
+  #   toc: true
+  #   css: styles.css
+  #   date: last-modified
+  #   number-sections: true
+  #   code-line-numbers: true
+  #   tbl-cap-location: top
+  #   link-external-newwindow: true
 draft: true
 ---
 
