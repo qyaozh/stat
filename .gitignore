@@ -6,13 +6,17 @@
 /.quarto/
 **/*.quarto_ipynb
 
+# 忽略任意目录下的_quarto.yml等文件
 _quarto.yml
 stat.Rproj
 styles.css
+# 忽略根目录下的index.qmd等文件
 /index.qmd
 /readme.qmd
 /Keng.qmd
+# 忽略该文件夹下的文件
 /images/
 /shiny-server/
 /_freeze/
+# 忽略任意层级目录下以_cache为后缀的文件
 **/*_cache/
