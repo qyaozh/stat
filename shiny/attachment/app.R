@@ -1,0 +1,175 @@
+# shiny与bslib必须加载
+library(shiny)
+library(bslib)
+
+# 修改package ##################################################################
+library(ggplot2)
+# 修改结束 #####################################################################
+
+# Define UI --------------------------------------------------------------------
+ui <- page_sidebar(
+  
+# 修改标题 #####################################################################
+  title = "依恋倾向心理测验",
+# 修改结束 #####################################################################
+    
+# 修改Input ####################################################################
+  sidebar = sidebar(
+    bg = "#EEEEEE",
+    fillable = TRUE,
+    helpText("下面给出的句子描述了每个人在亲密关系中可能会有的感觉，亲密关系包括你与父母、兄弟姐妹、配偶
+（恋人）、好朋友、老师（导师）等重要人物的关系。总体而言这些情况在多大程度上与你相符？首先
+，请根据与母亲（或像母亲一样的人）的交往过程中常常体验到的感受，从七个选项中选出最符合你实
+际情况的选项。"),
+    selectInput(inputId = "ecr1", 
+            "1.我不喜欢向她袒露自己内心深处的感受.", 
+            choices = c("非常不符"=1,
+                        "不符合"=2,
+                        "比较不符"=3,
+                        "不确定"=4,
+                        "比较符合"=5,
+                        "符合"=6,
+                        "非常符合"=7)),
+    selectInput(inputId = "ecr2", 
+            "2.我担心她不会像我在乎她那样在乎我。", 
+            choices = c("非常不符"=1,
+                        "不符合"=2,
+                        "比较不符"=3,
+                        "不确定"=4,
+                        "比较符合"=5,
+                        "符合"=6,
+                        "非常符合"=7)),
+    selectInput(inputId = "ecr3", 
+            "3.我发现依靠她是件容易的事。", 
+            choices = c("非常不符"=1,
+                        "不符合"=2,
+                        "比较不符"=3,
+                        "不确定"=4,
+                        "比较符合"=5,
+                        "符合"=6,
+                        "非常符合"=7)),
+    selectInput(inputId = "ecr4", 
+            "4.我会就某些事与她进行协商。", 
+            choices = c("非常不符"=1,
+                        "不符合"=2,
+                        "比较不符"=3,
+                        "不确定"=4,
+                        "比较符合"=5,
+                        "符合"=6,
+                        "非常符合"=7)),
+    selectInput(inputId = "ecr5", 
+            "5.我害怕她会抛弃我。", 
+            choices = c("非常不符"=1,
+                        "不符合"=2,
+                        "比较不符"=3,
+                        "不确定"=4,
+                        "比较符合"=5,
+                        "符合"=6,
+                        "非常符合"=7)),
+    selectInput(inputId = "ecr6", 
+            "6.在需要的时候, 我向她求助是有用的。", 
+            choices = c("非常不符"=1,
+                        "不符合"=2,
+                        "比较不符"=3,
+                        "不确定"=4,
+                        "比较符合"=5,
+                        "符合"=6,
+                        "非常符合"=7)),
+    selectInput(inputId = "ecr7", 
+            "7.我常常担心她不是真地喜欢我。", 
+            choices = c("非常不符"=1,
+                        "不符合"=2,
+                        "比较不符"=3,
+                        "不确定"=4,
+                        "比较符合"=5,
+                        "符合"=6,
+                        "非常符合"=7)),
+    selectInput(inputId = "ecr8", 
+            "8.向她敞开心扉会让我觉得不舒服。", 
+            choices = c("非常不符"=1,
+                        "不符合"=2,
+                        "比较不符"=3,
+                        "不确定"=4,
+                        "比较符合"=5,
+                        "符合"=6,
+                        "非常符合"=7)),
+    selectInput(inputId = "ecr9", 
+            "9.我经常与她谈论我所遇到的问题以及我关心的事情。", 
+            choices = c("非常不符"=1,
+                        "不符合"=2,
+                        "比较不符"=3,
+                        "不确定"=4,
+                        "比较符合"=5,
+                        "符合"=6,
+                        "非常符合"=7)),
+
+# 修改结束 #####################################################################
+    tags$div(
+      class = "mt-auto",
+      card(
+        fill = FALSE,
+        class = "w-100",
+        card_header("引用"),
+        card_body(
+          tags$p(
+# 修改citation #################################################################
+            "张庆垚. (2026).",
+            tags$i("依恋倾向心理测验"),
+            ". 单车欲问边. https://stat.psych.pub/attachment/"
+# 修改结束 #####################################################################
+          )
+        )
+      ),
+      tags$a(
+        class = "btn btn-sm btn-outline-secondary w-100 text-center",
+        href = "https://stat.psych.pub",
+        icon("home"),
+        "返回主页"
+      )
+  )),
+# 修改Output ###################################################################
+    card(card_header("依恋倾向"), card_body(plotOutput(outputId = "attachment_plot"))),
+# 修改结束 #####################################################################
+) # ui结束
+
+# Define server logic required to draw a histogram ####
+
+  server <- function(input, output) {
+  
+# 修改计算 #####################################################################
+    dat_fun <- reactive(data.frame(
+      anxiety = mean(c(as.numeric(input$ecr2), as.numeric(input$ecr5), as.numeric(input$ecr7))),
+      avoidance = mean(c(as.numeric(input$ecr1), 8-as.numeric(input$ecr3), 8-as.numeric(input$ecr4), 8-as.numeric(input$ecr6), as.numeric(input$ecr8), 8-as.numeric(input$ecr9)))))
+  
+    output$attachment_plot <- renderPlot({
+      dat <- dat_fun()
+      
+      ggplot(dat, aes(anxiety, avoidance)) +
+        geom_point(size = 5) +
+        geom_rect(aes(xmin = 1, xmax = 2, ymin = 1, ymax = 2),
+                  fill = "springgreen") +
+        geom_rect(aes(xmin = 1, xmax = 2, ymin = 6, ymax = 7),
+                  fill = "skyblue") +
+        geom_rect(aes(xmin = 6, xmax = 7, ymin = 1, ymax = 2),
+                  fill = "wheat") +
+        geom_rect(aes(xmin = 6, xmax = 7, ymin = 6, ymax = 7),
+                  fill = "pink") +
+        annotate("text", label = "Secure", x = 1.5, y = 1.5) +
+        annotate("text", label = "Avoidant", x = 1.5, y = 6.5) +
+        annotate("text", label = "Anxious", x = 6.5, y = 1.5) +
+        annotate("text", label = "Fearful", x = 6.5, y = 6.5) +
+        theme_bw(base_size = 16) +
+        scale_x_continuous(name = "Attachment anxiety",
+                           breaks = 1:7,
+                           labels = 1:7,
+                           limits = c(1,7)) + 
+        scale_y_continuous(name = "Attachment avoidance",
+                           breaks = 1:7,
+                           labels = 1:7,
+                           limits = c(1,7)) +
+        coord_cartesian(ratio = 1)
+  })
+  }
+# 修改结束 #####################################################################
+
+shinyApp(ui = ui, server = server)
