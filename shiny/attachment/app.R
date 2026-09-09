@@ -18,7 +18,7 @@ ui <- page_sidebar(
     fillable = TRUE,
     width = "33%",
     tags$b("从这里开始"),
-    tags$b("一个人在不同亲密关系中的依恋倾向是不同的。
+    tags$p("一个人在不同亲密关系中的依恋倾向是不同的。
              亲密关系包括你与父母、兄弟姐妹、配偶（恋人）、好朋友、老师（导师）等重要人物的关系。
              接下来，你将评估与谁的关系？请选择："),
     selectInput(inputId = "relationship", 
@@ -30,7 +30,7 @@ ui <- page_sidebar(
                             "好朋友",
                             "老师(导师)")),
 
-    tags$b("下面给出的句子描述了每个人在亲密关系中可能会有的感觉。
+    tags$p("下面给出的句子描述了每个人在亲密关系中可能会有的感觉。
              接下来，请根据与上述人物交往过程中常常体验到的感受，
              从七个选项中选出最符合你实际情况的选项。"),
     selectInput(inputId = "ecr1", 
@@ -154,6 +154,7 @@ ui <- page_sidebar(
              sidebar = sidebar(
                bg = "#EEEEEE",
                position = "right",
+               # "ECR_RS_report"包含html tag，需要用htmlOutput输出。
                htmlOutput(outputId = "ECR_RS_report")
              ),
              plotOutput(outputId = "attachment_plot")
