@@ -17,6 +17,7 @@ ui <- page_sidebar(
   sidebar = sidebar(
     bg = "#EEEEEE",
     fillable = TRUE,
+    width = "33%",
     helpText("下面给出的句子描述了每个人在亲密关系中可能会有的感觉，亲密关系包括你与父母、兄弟姐妹、配偶
 （恋人）、好朋友、老师（导师）等重要人物的关系。总体而言这些情况在多大程度上与你相符？首先
 ，请根据与母亲（或像母亲一样的人）的交往过程中常常体验到的感受，从七个选项中选出最符合你实
@@ -112,11 +113,18 @@ ui <- page_sidebar(
         card_header("引用"),
         card_body(
           tags$p(
-# 修改citation #################################################################
+            # 修改citation #################################################################
             "张庆垚. (2026).",
             tags$i("依恋倾向心理测验"),
             ". 单车欲问边. https://stat.psych.pub/attachment/"
-# 修改结束 #####################################################################
+            # 修改结束 #####################################################################
+          ),
+          tags$p(
+            # 修改citation #################################################################
+            "Zhang, Q., Hou, Z. J., Fraley, R. C., Hu, Y., Zhang, X., Zhang, J., & Guo, X. (2022). Validating the Experiences in Close Relationships–Relationship Structures Scale among Chinese Children and Adolescents.", 
+            tags$i("Journal of Personality Assessment, 104"),
+            "(3), 347-358.",
+            # 修改结束 #####################################################################
           )
         )
       ),
@@ -128,7 +136,18 @@ ui <- page_sidebar(
       )
   )),
 # 修改Output ###################################################################
-    card(card_header("依恋倾向"), card_body(plotOutput(outputId = "attachment_plot"))),
+    card(card_header("依恋倾向"), 
+         card_body(
+           layout_sidebar(
+             fillable = TRUE,
+             sidebar = sidebar(
+               position = "right",
+               htmlOutput(outputId = "ECR_RS_report")
+             ),
+             plotOutput(outputId = "attachment_plot")
+             )
+           )
+         ),
 # 修改结束 #####################################################################
 ) # ui结束
 
@@ -139,11 +158,34 @@ ui <- page_sidebar(
 # 修改计算 #####################################################################
     dat_fun <- reactive(data.frame(
       anxiety = mean(c(as.numeric(input$ecr2), as.numeric(input$ecr5), as.numeric(input$ecr7))),
-      avoidance = mean(c(as.numeric(input$ecr1), 8-as.numeric(input$ecr3), 8-as.numeric(input$ecr4), 8-as.numeric(input$ecr6), as.numeric(input$ecr8), 8-as.numeric(input$ecr9)))))
-  
-    output$attachment_plot <- renderPlot({
+      avoidance = mean(c(as.numeric(input$ecr1), 
+                         8-as.numeric(input$ecr3), 
+                         8-as.numeric(input$ecr4), 
+                         8-as.numeric(input$ecr6), 
+                         as.numeric(input$ecr8), 
+                         8-as.numeric(input$ecr9)))
+      ))
+    
+    output$ECR_RS_report <- renderText({
       dat <- dat_fun()
+      paste0(
+        "<b>测评报告</b>",
+        "你的依恋焦虑得分：",
+        round(dat$anxiety, 2),
+        "，<br>",
+        "你的依恋回避得分：",
+        round(dat$avoidance, 2),
+        "，<br><br>",
+        "左图中点的位置反映了你的依恋风格，横坐标为你的依恋焦虑得分，纵坐标为你的依恋回避得分。
+         若该点落在绿色区间内，这表明你的依恋风格为典型的安全型。
+         若该点落在绿色区间附近，这表明你的依恋风格接近安全型。
+         其他依此类推。<br><br>更多信息，请咨询专业人员。"
+      )
+    })
+    
+    output$attachment_plot <- renderPlot({
       
+      dat <- dat_fun()
       ggplot(dat, aes(anxiety, avoidance)) +
         geom_point(size = 5) +
         geom_rect(aes(xmin = 1, xmax = 2, ymin = 1, ymax = 2),
@@ -154,20 +196,22 @@ ui <- page_sidebar(
                   fill = "wheat") +
         geom_rect(aes(xmin = 6, xmax = 7, ymin = 6, ymax = 7),
                   fill = "pink") +
-        annotate("text", label = "Secure", x = 1.5, y = 1.5) +
-        annotate("text", label = "Avoidant", x = 1.5, y = 6.5) +
-        annotate("text", label = "Anxious", x = 6.5, y = 1.5) +
-        annotate("text", label = "Fearful", x = 6.5, y = 6.5) +
-        theme_bw(base_size = 16) +
-        scale_x_continuous(name = "Attachment anxiety",
+        annotate("text", label = "安全型", x = 1.5, y = 1.5) +
+        annotate("text", label = "回避型", x = 1.5, y = 6.5) +
+        annotate("text", label = "焦虑型", x = 6.5, y = 1.5) +
+        annotate("text", label = "矛盾型", x = 6.5, y = 6.5) +
+        geom_hline(yintercept = 4, linewidth = 0.5) +
+        geom_vline(xintercept = 4, linewidth = 0.5) +
+        scale_x_continuous(name = "依恋焦虑",
                            breaks = 1:7,
                            labels = 1:7,
                            limits = c(1,7)) + 
-        scale_y_continuous(name = "Attachment avoidance",
+        scale_y_continuous(name = "依恋回避",
                            breaks = 1:7,
                            labels = 1:7,
                            limits = c(1,7)) +
-        coord_cartesian(ratio = 1)
+        coord_cartesian(ratio = 1) +
+        theme_bw(base_size = 16)
   })
   }
 # 修改结束 #####################################################################
