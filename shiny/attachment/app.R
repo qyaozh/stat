@@ -203,7 +203,6 @@ ui <- page_sidebar(
       
       dat <- dat_fun()
       ggplot(dat, aes(anxiety, avoidance)) +
-        geom_point(size = 5) +
         geom_rect(aes(xmin = 1, xmax = 2, ymin = 1, ymax = 2),
                   fill = "springgreen") +
         geom_rect(aes(xmin = 1, xmax = 2, ymin = 6, ymax = 7),
@@ -218,6 +217,7 @@ ui <- page_sidebar(
         annotate("text", label = "矛盾型", x = 6.5, y = 6.5) +
         geom_hline(yintercept = 4, linewidth = 0.5) +
         geom_vline(xintercept = 4, linewidth = 0.5) +
+        geom_point(size = 5) +
         scale_x_continuous(name = "依恋焦虑",
                            breaks = 1:7,
                            labels = 1:7,
