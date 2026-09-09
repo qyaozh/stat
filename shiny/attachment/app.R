@@ -23,7 +23,7 @@ ui <- page_sidebar(
     selectInput(inputId = "relationship", 
                 "你要评估与谁的关系：", 
                 choices = c("配偶(恋人)",
-                            "母亲(或像父亲一样的人)",
+                            "母亲(或像母亲一样的人)",
                             "父亲(或像父亲一样的人)",
                             "兄弟姐妹",
                             "好朋友",
