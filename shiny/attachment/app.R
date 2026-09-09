@@ -15,7 +15,6 @@ ui <- page_sidebar(
     
 # 修改Input ####################################################################
   sidebar = sidebar(
-    bg = "#EEEEEE",
     fillable = TRUE,
     width = "33%",
     helpText("下面给出的句子描述了每个人在亲密关系中可能会有的感觉，亲密关系包括你与父母、兄弟姐妹、配偶
@@ -114,7 +113,7 @@ ui <- page_sidebar(
         card_body(
           tags$p(
             # 修改citation #################################################################
-            "张庆垚. (2026).",
+            "张礼娟，张庆垚. (2026).",
             tags$i("依恋倾向心理测验"),
             ". 单车欲问边. https://stat.psych.pub/attachment/"
             # 修改结束 #####################################################################
@@ -141,6 +140,7 @@ ui <- page_sidebar(
            layout_sidebar(
              fillable = TRUE,
              sidebar = sidebar(
+               bg = "#EEEEEE",
                position = "right",
                htmlOutput(outputId = "ECR_RS_report")
              ),
