@@ -21,9 +21,9 @@ ui <- page_sidebar(
     tags$p("一个人在不同亲密关系中的依恋倾向是不同的。
              亲密关系包括你与父母、兄弟姐妹、配偶(恋人)、好朋友、老师(导师)等重要人物的关系。
              接下来，你将评估与谁的关系？请选择："),
-    selectInput(inputId = "relationship", 
+    radioButtons(inputId = "relationship", 
                 "你要评估与谁的关系：", 
-                choices = c("配偶(恋人)",
+                choices = list("配偶(恋人)",
                             "母亲(或像母亲一样的人)",
                             "父亲(或像父亲一样的人)",
                             "兄弟姐妹",
@@ -33,81 +33,81 @@ ui <- page_sidebar(
     tags$p("下面给出的句子描述了每个人在亲密关系中可能会有的感觉。
              接下来，请根据与上述人物交往过程中常常体验到的感受，
              从七个选项中选出最符合你实际情况的选项。"),
-    selectInput(inputId = "ecr1", 
+    radioButtons(inputId = "ecr1", 
             "1.我不喜欢向TA袒露自己内心深处的感受.", 
-            choices = c("非常不符"=1,
+            choices = list("非常不符"=1,
                         "不符合"=2,
                         "比较不符"=3,
                         "不确定"=4,
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
-    selectInput(inputId = "ecr2", 
+    radioButtons(inputId = "ecr2", 
             "2.我担心TA不会像我在乎她那样在乎我。", 
-            choices = c("非常不符"=1,
+            choices = list("非常不符"=1,
                         "不符合"=2,
                         "比较不符"=3,
                         "不确定"=4,
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
-    selectInput(inputId = "ecr3", 
+    radioButtons(inputId = "ecr3", 
             "3.我发现依靠TA是件容易的事。", 
-            choices = c("非常不符"=1,
+            choices = list("非常不符"=1,
                         "不符合"=2,
                         "比较不符"=3,
                         "不确定"=4,
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
-    selectInput(inputId = "ecr4", 
+    radioButtons(inputId = "ecr4", 
             "4.我会就某些事与TA进行协商。", 
-            choices = c("非常不符"=1,
+            choices = list("非常不符"=1,
                         "不符合"=2,
                         "比较不符"=3,
                         "不确定"=4,
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
-    selectInput(inputId = "ecr5", 
+    radioButtons(inputId = "ecr5", 
             "5.我害怕TA会抛弃我。", 
-            choices = c("非常不符"=1,
+            choices = list("非常不符"=1,
                         "不符合"=2,
                         "比较不符"=3,
                         "不确定"=4,
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
-    selectInput(inputId = "ecr6", 
+    radioButtons(inputId = "ecr6", 
             "6.在需要的时候, 我向TA求助是有用的。", 
-            choices = c("非常不符"=1,
+            choices = list("非常不符"=1,
                         "不符合"=2,
                         "比较不符"=3,
                         "不确定"=4,
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
-    selectInput(inputId = "ecr7", 
+    radioButtons(inputId = "ecr7", 
             "7.我常常担心TA不是真地喜欢我。", 
-            choices = c("非常不符"=1,
+            choices = list("非常不符"=1,
                         "不符合"=2,
                         "比较不符"=3,
                         "不确定"=4,
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
-    selectInput(inputId = "ecr8", 
+    radioButtons(inputId = "ecr8", 
             "8.向TA敞开心扉会让我觉得不舒服。", 
-            choices = c("非常不符"=1,
+            choices = list("非常不符"=1,
                         "不符合"=2,
                         "比较不符"=3,
                         "不确定"=4,
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
-    selectInput(inputId = "ecr9", 
+    radioButtons(inputId = "ecr9", 
             "9.我经常与TA谈论我所遇到的问题以及我关心的事情。", 
-            choices = c("非常不符"=1,
+            choices = list("非常不符"=1,
                         "不符合"=2,
                         "比较不符"=3,
                         "不确定"=4,
@@ -193,8 +193,8 @@ ui <- page_sidebar(
         round(dat$avoidance, 2),
         "，<br><br>",
         "左图中点的位置反映了你的依恋风格，横坐标为你的依恋焦虑得分，纵坐标为你的依恋回避得分。
-         若该点落在绿色区间内，这表明你的依恋风格为典型的安全型。
-         若该点落在绿色区间附近，这表明你的依恋风格接近安全型。
+         若该点落在深绿色区间内，这表明你的依恋风格为典型的安全型。
+         若该点落在深绿色区间附近、浅绿色区间内，这表明你的依恋风格接近安全型。
          其他依此类推。<br><br>更多信息，请咨询专业人士。"
       )
     })
@@ -203,12 +203,20 @@ ui <- page_sidebar(
       
       dat <- dat_fun()
       ggplot(dat, aes(anxiety, avoidance)) +
+        geom_rect(aes(xmin = 1, xmax = 4, ymin = 1, ymax = 4),
+                  fill = "springgreen", alpha = 0.3) +
         geom_rect(aes(xmin = 1, xmax = 2, ymin = 1, ymax = 2),
                   fill = "springgreen") +
+        geom_rect(aes(xmin = 1, xmax = 4, ymin = 4, ymax = 7),
+                  fill = "skyblue", alpha = 0.3) +
         geom_rect(aes(xmin = 1, xmax = 2, ymin = 6, ymax = 7),
                   fill = "skyblue") +
+        geom_rect(aes(xmin = 4, xmax = 7, ymin = 1, ymax = 4),
+                  fill = "wheat", alpha = 0.3) +
         geom_rect(aes(xmin = 6, xmax = 7, ymin = 1, ymax = 2),
                   fill = "wheat") +
+        geom_rect(aes(xmin = 4, xmax = 7, ymin = 4, ymax = 7),
+                  fill = "pink", alpha = 0.3) +
         geom_rect(aes(xmin = 6, xmax = 7, ymin = 6, ymax = 7),
                   fill = "pink") +
         annotate("text", label = "安全型", x = 1.5, y = 1.5) +
