@@ -114,7 +114,7 @@ ui <- page_sidebar(
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
-    actionButton("update", "点击生成测评报告", icon = icon("refresh")),
+    actionButton("update", "点击更新测评报告", icon = icon("refresh")),
 
 # 修改结束 #####################################################################
     tags$div(
@@ -220,6 +220,7 @@ attachment_quadrant  <- ggplot() +
               as.numeric(input$ecr8),
               8 - as.numeric(input$ecr9)))
     ))|> 
+      # 点击update，则开始计算数据
       bindEvent(input$update)
     
     output$ECR_RS_report <- renderText({
@@ -240,14 +241,18 @@ attachment_quadrant  <- ggplot() +
          若该点落在深绿色区间附近、浅绿色区间内，这表明你的依恋风格接近安全型。
          其他依此类推。<br><br>更多信息，请咨询专业人士。")
     })|> 
+      # 检查两个输入缓存的变化，若缓存发生变化，则bindEvent可激发新计算
       bindCache(dat_fun(), input$relationship)|> 
-      bindEvent(input$update, input$relationship)
+      # dat_fun()或input$relationship变化的前提下，点击update，重新生成ECR_RS_report
+      bindEvent(input$update)
       
     output$attachment_plot <- renderPlot({
       dat <- dat_fun()
       attachment_quadrant + 
         geom_point(aes(anxiety, avoidance), data = dat, size = 5)})|> 
+      # 检查dat_fun()缓存的变化，若缓存变化，则bindEvent可激发新计算
       bindCache(dat_fun())|>
+      # dat_fun()变化的前提下，点击update，重新生成统计图
       bindEvent(input$update)
     }
 # 修改结束 #####################################################################
