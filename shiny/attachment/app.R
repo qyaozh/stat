@@ -114,6 +114,7 @@ ui <- page_sidebar(
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
+    actionButton("update", "点击生成测评报告", icon = icon("refresh")),
 
 # 修改结束 #####################################################################
     tags$div(
@@ -147,7 +148,7 @@ ui <- page_sidebar(
       )
   )),
 # 修改Output ###################################################################
-    card(card_header("依恋倾向"), 
+    card(card_header("测评报告"), 
          card_body(
            layout_sidebar(
              fillable = TRUE,
@@ -166,23 +167,65 @@ ui <- page_sidebar(
 
 # Define server logic required to draw a histogram ####
 
+# Plot the attachment_quadrant that never change.
+
+attachment_quadrant  <- ggplot() +
+  geom_rect(aes(xmin = 1, xmax = 4, ymin = 1, ymax = 4),
+            fill = "springgreen", alpha = 0.3) +
+  geom_rect(aes(xmin = 1, xmax = 2, ymin = 1, ymax = 2),
+            fill = "springgreen") +
+  geom_rect(aes(xmin = 1, xmax = 4, ymin = 4, ymax = 7),
+            fill = "skyblue", alpha = 0.3) +
+  geom_rect(aes(xmin = 1, xmax = 2, ymin = 6, ymax = 7),
+            fill = "skyblue") +
+  geom_rect(aes(xmin = 4, xmax = 7, ymin = 1, ymax = 4),
+            fill = "wheat", alpha = 0.3) +
+  geom_rect(aes(xmin = 6, xmax = 7, ymin = 1, ymax = 2),
+            fill = "wheat") +
+  geom_rect(aes(xmin = 4, xmax = 7, ymin = 4, ymax = 7),
+            fill = "pink", alpha = 0.3) +
+  geom_rect(aes(xmin = 6, xmax = 7, ymin = 6, ymax = 7),
+            fill = "pink") +
+  annotate("text", label = "安全型", x = 1.5, y = 1.5) +
+  annotate("text", label = "回避型", x = 1.5, y = 6.5) +
+  annotate("text", label = "焦虑型", x = 6.5, y = 1.5) +
+  annotate("text", label = "矛盾型", x = 6.5, y = 6.5) +
+  geom_hline(yintercept = 4, linewidth = 0.5) +
+  geom_vline(xintercept = 4, linewidth = 0.5) +
+  scale_x_continuous(name = "依恋焦虑",
+                     breaks = 1:7,
+                     labels = 1:7,
+                     limits = c(1,7)) + 
+  scale_y_continuous(name = "依恋回避",
+                     breaks = 1:7,
+                     labels = 1:7,
+                     limits = c(1,7)) +
+  coord_cartesian(ratio = 1) +
+  theme_bw(base_size = 16)
+
+
   server <- function(input, output) {
-  
 # 修改计算 #####################################################################
-    dat_fun <- reactive(data.frame(
-      anxiety = mean(c(as.numeric(input$ecr2), as.numeric(input$ecr5), as.numeric(input$ecr7))),
-      avoidance = mean(c(as.numeric(input$ecr1), 
-                         8-as.numeric(input$ecr3), 
-                         8-as.numeric(input$ecr4), 
-                         8-as.numeric(input$ecr6), 
-                         as.numeric(input$ecr8), 
-                         8-as.numeric(input$ecr9)))
-      ))
+    dat_fun <- reactive(
+        data.frame(
+          anxiety = mean(c(
+            as.numeric(input$ecr2),
+            as.numeric(input$ecr5),
+            as.numeric(input$ecr7)
+          )),
+          avoidance = mean(c(as.numeric(input$ecr1),
+              8 - as.numeric(input$ecr3),
+              8 - as.numeric(input$ecr4),
+              8 - as.numeric(input$ecr6),
+              as.numeric(input$ecr8),
+              8 - as.numeric(input$ecr9)))
+    ))|> 
+      bindEvent(input$update)
     
     output$ECR_RS_report <- renderText({
       dat <- dat_fun()
       paste0(
-        "<b>测评报告</b>",
+        "<b>解读</b>",
         "在与",
         input$relationship,
         "的关系中，<br>",
@@ -195,49 +238,16 @@ ui <- page_sidebar(
         "左图中点的位置反映了你的依恋风格，横坐标为你的依恋焦虑得分，纵坐标为你的依恋回避得分。
          若该点落在深绿色区间内，这表明你的依恋风格为典型的安全型。
          若该点落在深绿色区间附近、浅绿色区间内，这表明你的依恋风格接近安全型。
-         其他依此类推。<br><br>更多信息，请咨询专业人士。"
-      )
-    })
-    
-    output$attachment_plot <- renderPlot({
+         其他依此类推。<br><br>更多信息，请咨询专业人士。")
+    })|> 
+      bindEvent(input$update)
       
+    output$attachment_plot <- renderPlot({
       dat <- dat_fun()
-      ggplot(dat, aes(anxiety, avoidance)) +
-        geom_rect(aes(xmin = 1, xmax = 4, ymin = 1, ymax = 4),
-                  fill = "springgreen", alpha = 0.3) +
-        geom_rect(aes(xmin = 1, xmax = 2, ymin = 1, ymax = 2),
-                  fill = "springgreen") +
-        geom_rect(aes(xmin = 1, xmax = 4, ymin = 4, ymax = 7),
-                  fill = "skyblue", alpha = 0.3) +
-        geom_rect(aes(xmin = 1, xmax = 2, ymin = 6, ymax = 7),
-                  fill = "skyblue") +
-        geom_rect(aes(xmin = 4, xmax = 7, ymin = 1, ymax = 4),
-                  fill = "wheat", alpha = 0.3) +
-        geom_rect(aes(xmin = 6, xmax = 7, ymin = 1, ymax = 2),
-                  fill = "wheat") +
-        geom_rect(aes(xmin = 4, xmax = 7, ymin = 4, ymax = 7),
-                  fill = "pink", alpha = 0.3) +
-        geom_rect(aes(xmin = 6, xmax = 7, ymin = 6, ymax = 7),
-                  fill = "pink") +
-        annotate("text", label = "安全型", x = 1.5, y = 1.5) +
-        annotate("text", label = "回避型", x = 1.5, y = 6.5) +
-        annotate("text", label = "焦虑型", x = 6.5, y = 1.5) +
-        annotate("text", label = "矛盾型", x = 6.5, y = 6.5) +
-        geom_hline(yintercept = 4, linewidth = 0.5) +
-        geom_vline(xintercept = 4, linewidth = 0.5) +
-        geom_point(size = 5) +
-        scale_x_continuous(name = "依恋焦虑",
-                           breaks = 1:7,
-                           labels = 1:7,
-                           limits = c(1,7)) + 
-        scale_y_continuous(name = "依恋回避",
-                           breaks = 1:7,
-                           labels = 1:7,
-                           limits = c(1,7)) +
-        coord_cartesian(ratio = 1) +
-        theme_bw(base_size = 16)
-  })
-  }
+      attachment_quadrant + 
+        geom_point(aes(anxiety, avoidance), data = dat, size = 5)})|>
+      bindEvent(input$update)
+    }
 # 修改结束 #####################################################################
 
 shinyApp(ui = ui, server = server)
