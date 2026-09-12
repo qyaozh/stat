@@ -85,7 +85,7 @@ layout_column_wrap(
 # 修改结束 #####################################################################
 ) # ui结束
 
-# Define server logic required to draw a histogram ####
+# Define server logic required to draw plots ####
 
 server <- function(input, output) {
   
