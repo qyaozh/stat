@@ -242,6 +242,7 @@ attachment_quadrant  <- ggplot() +
          其他依此类推。<br><br>更多信息，请咨询专业人士。")
     })|> 
       # 检查两个输入缓存的变化，若缓存发生变化，则bindEvent可激发新计算
+      # bindCache可避免用户反复点击刷新按钮造成的重复计算
       bindCache(dat_fun(), input$relationship)|> 
       # dat_fun()或input$relationship变化的前提下，点击update，重新生成ECR_RS_report
       bindEvent(input$update)
@@ -251,6 +252,7 @@ attachment_quadrant  <- ggplot() +
       attachment_quadrant + 
         geom_point(aes(anxiety, avoidance), data = dat, size = 5)})|> 
       # 检查dat_fun()缓存的变化，若缓存变化，则bindEvent可激发新计算
+      # bindCache可避免用户反复点击刷新按钮造成的重复计算
       bindCache(dat_fun())|>
       # dat_fun()变化的前提下，点击update，重新生成统计图
       bindEvent(input$update)
