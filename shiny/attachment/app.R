@@ -240,12 +240,14 @@ attachment_quadrant  <- ggplot() +
          若该点落在深绿色区间附近、浅绿色区间内，这表明你的依恋风格接近安全型。
          其他依此类推。<br><br>更多信息，请咨询专业人士。")
     })|> 
-      bindEvent(input$update)
+      bindCache(dat_fun(), input$relationship)|> 
+      bindEvent(input$update, input$relationship)
       
     output$attachment_plot <- renderPlot({
       dat <- dat_fun()
       attachment_quadrant + 
-        geom_point(aes(anxiety, avoidance), data = dat, size = 5)})|>
+        geom_point(aes(anxiety, avoidance), data = dat, size = 5)})|> 
+      bindCache(dat_fun())|>
       bindEvent(input$update)
     }
 # 修改结束 #####################################################################
