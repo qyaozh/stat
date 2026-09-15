@@ -114,7 +114,8 @@ ui <- page_sidebar(
                         "比较符合"=5,
                         "符合"=6,
                         "非常符合"=7)),
-    actionButton("update", "点击更新测评报告", icon = icon("refresh")),
+    tags$b("最后一步"),
+    actionButton("update", "点击更新测评报告", icon = icon("refresh"), class = "btn-sm"),
 
 # 修改结束 #####################################################################
     tags$div(
