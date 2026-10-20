@@ -49,9 +49,7 @@ ui <- page_sidebar(
         card_body(
           tags$p(
     # 修改citation TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT####
-            "张庆垚. (2026).",
-            tags$i("统计检验力如何变化"),
-            ". 单车欲问边. https://stat.psych.pub/how_power_change/"
+            "张庆垚. (2026).", tags$i("统计检验力如何变化"), "."
     # 修改结束 LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL####
           )
         )
