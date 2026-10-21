@@ -20,8 +20,8 @@ data("well", package = "Keng")
 
 通过以下方式获取：
 
-1. 访问Github仓库<https://github.com/qyaozh/stat>
-2. 访问网站<https://www.psych.pub>
+- 访问Github仓库<https://github.com/qyaozh/stat>
+- 访问网站<https://www.psych.pub>
 
 ## Shiny
 
@@ -32,4 +32,4 @@ data("well", package = "Keng")
 
 2. 直接浏览
 
-- <https://www.psych.pub>
+- 访问网站<https://www.psych.pub>
