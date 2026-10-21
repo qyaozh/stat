@@ -16,9 +16,9 @@ data("well", package = "Keng")
 ?well
 ```
 
-## 代码与Shiny应用
+## 代码、Shiny与拓展阅读
 
-可通过以下方式获取：
+通过以下方式获取：
 
 1. 访问Github仓库<https://github.com/qyaozh/stat>
 2. 访问网站<https://www.psych.pub>
