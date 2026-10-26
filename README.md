@@ -16,20 +16,9 @@ data("well", package = "Keng")
 ?well
 ```
 
-## 代码与拓展阅读
+## 代码、Shiny与拓展阅读
 
 通过以下方式获取：
 
 - 访问Github仓库<https://github.com/qyaozh/stat>
-- 访问网站<https://www.psych.pub>
-
-## Shiny
-
-1. 通过以下方式下载到本地运行：
-
-- 访问Github仓库<https://github.com/qyaozh/stat>
-- 访问网站<https://www.psych.pub>
-
-2. 直接浏览
-
 - 访问网站<https://www.psych.pub>

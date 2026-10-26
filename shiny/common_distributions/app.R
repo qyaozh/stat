@@ -49,7 +49,7 @@ ui <- page_sidebar(
         card_body(
           tags$p(
 # 修改citation #################################################################
-            "张庆垚. (2026).", tags$i("常见数据分布"), "."
+                 "张庆垚. (2026).", tags$i("常见数据分布"), ". 单车欲问边. https://stat.psych.pub/"
 # 修改结束 #####################################################################
           )
         )
@@ -76,10 +76,7 @@ layout_column_wrap(
 # Define server logic required to draw a histogram ####
 
 server <- function(input, output) {
-  
 # 修改计算 #####################################################################
-  
-  
   output$norm_plot <- renderPlot({
     dat <- data.frame(x = seq(-4, 4, 0.01))
     ggplot(dat, aes(x)) +
@@ -87,6 +84,7 @@ server <- function(input, output) {
       labs(x = "z", y = "Density") +
       theme_bw(base_size = 16)
   })
+  
   output$chi_plot <- renderPlot({
     dat <- data.frame(x = seq(0.001, qchisq(0.0001, input$df2, lower.tail = FALSE), 0.001))
     ggplot(dat, aes(x)) +
@@ -95,6 +93,7 @@ server <- function(input, output) {
       theme_bw(base_size = 16) +
       coord_cartesian(xlim = c(-4, qchisq(0.0001, input$df2, lower.tail = FALSE)))
   })
+  
   output$t_plot <- renderPlot({
     dat <- data.frame(x = seq(-4, 4, 0.01))
     ggplot(dat, aes(x)) +
@@ -102,6 +101,7 @@ server <- function(input, output) {
       labs(x = "t", y = "Density") +
       theme_bw(base_size = 16)
   })
+  
   output$f_plot <- renderPlot({
     dat <- data.frame(x = seq(0.001, qf(0.0001, input$df1, input$df2, lower.tail = FALSE), 0.001))
     ggplot(dat, aes(x)) +
