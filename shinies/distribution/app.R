@@ -46,16 +46,15 @@ ui <- page_sidebar(
                                                    "张庆垚. (2026).", tags$i("数据分布"), ". 单车欲问边. https://stat.psych.pub"
 # 修改结束 #####################################################################
                           ))),
-    tags$div(class = "mt-auto",
-            card(fill = FALSE,
-                 class = "w-100",
-                 card_header("声明"),
-                 card_body(tags$p("本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用",
-                           tags$a(href = "https://stat.psych.pub", "CC BY-NC-ND 4.0"), "协议进行许可。"))),
-    tags$a(class = "btn btn-sm btn-outline-secondary w-100 text-center", 
-           href = "https://stat.psych.pub", 
-           icon("home"),
-           "返回主页"))),
+                             card(fill = FALSE,
+                                  class = "w-100",
+                                  card_header("声明"),
+                                  card_body(tags$p("本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用",
+                                            tags$a(href = "https://stat.psych.pub", "CC BY-NC-ND 4.0"), "协议进行许可。"))),
+                              tags$a(class = "btn btn-sm btn-outline-secondary w-100 text-center", 
+                                     href = "https://stat.psych.pub", 
+                                     icon("home"),
+                                     "返回主页"))),
 # 修改Output ###################################################################
 layout_column_wrap(
     width = 1/3,
@@ -67,7 +66,7 @@ layout_column_wrap(
     card(card_header("累计概率分布图"), card_body(plotOutput(outputId = "cumsum_prob_plot")))
     )
 # 修改结束 #####################################################################
-)) # ui结束
+) # ui结束
 
 # Define server logic required to draw plots ####
 
