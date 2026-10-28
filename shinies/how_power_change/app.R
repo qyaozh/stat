@@ -30,20 +30,17 @@ ui <- page_sidebar(
                                                  step = 1,
                                                  value = 100),
     # 修改结束 LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL####
-    tags$div(class = "mt-auto",
-             card(fill = FALSE,
-             class = "w-100",
-             card_header("引用"),
-             card_body(tags$p(
+    tags$div(class = "mt-auto text-muted",
+             style = "font-size:14px;",
+             tags$strong("引用"),
+             tags$p(
           # 修改citation TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT####
-                              "张庆垚. (2026).", tags$i("统计检验力如何变化"), ". 单车欲问边. https://stat.psych.pub"
+                    "张庆垚. (2026).", tags$i("统计检验力如何变化"), ". 单车欲问边. https://stat.psych.pub"
           # 修改结束 LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL####
-                             ))),
-             card(fill = FALSE,
-                  class = "w-100",
-                  card_header("声明"),
-                  card_body(tags$p("本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用",
-                            tags$a(href = "https://stat.psych.pub", "CC BY-NC-ND 4.0"), "协议进行许可。"))),
+                    ),
+             tags$strong("声明"),
+             tags$p("本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用",
+                    tags$a(href = "https://stat.psych.pub", "CC BY-NC-ND 4.0"), "协议进行许可。"),
              tags$a(class = "btn btn-sm btn-outline-secondary w-100 text-center",
                     href = "https://stat.psych.pub",
                     icon("home"),
