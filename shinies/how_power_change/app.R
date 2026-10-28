@@ -5,69 +5,56 @@ library(ggplot2)
 # Define UI -------------------------------------------------------------------
 ui <- page_sidebar(
   # 修改标题 TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT####
-  title = "统计检验力如何变化",
+                   title = "统计检验力如何变化",
   # 修改结束 LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL####
   # Sidebar panel for inputs ----
-  sidebar = sidebar(
-    bg = "#EEEEEE",
-    fillable = TRUE,
-  
-  # 修改输入TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT####  
-    helpText("假定H0与H1总体的标准差相等，使用单样本z检验比较H0与H1均值的差异。"),
-    numericInput(
-      inputId = "muH0",
-      label = "H0总体均值",
-      step = 0.01,
-      value = 0
-    ),
-    numericInput(
-      inputId = "muH1",
-      label = "H1总体均值",
-      step = 0.01,
-      value = 2
-    ),
-    numericInput(
-      inputId = "sigma",
-      label = "总体标准差",
-      step = 0.01,
-      value = 10
-    ),
-    numericInput(
-      inputId = "n",
-      label = "样本量",
-      min = 1,
-      step = 1,
-      value = 100
-    ),
+                  sidebar = sidebar(bg = "#EEEEEE",
+                                    fillable = TRUE,
+                  # 修改输入TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT####  
+                                    helpText("假定H0与H1总体的标准差相等，使用单样本z检验比较H0与H1均值的差异。"),
+                                    numericInput(inputId = "muH0",
+                                                 label = "H0总体均值",
+                                                 step = 0.01,
+                                                 value = 0),
+                                    numericInput(inputId = "muH1",
+                                                 label = "H1总体均值",
+                                                 step = 0.01,
+                                                 value = 2),
+                                    numericInput(inputId = "sigma",
+                                                 label = "总体标准差",
+                                                 step = 0.01,
+                                                 value = 10),
+                                    numericInput(inputId = "n",
+                                                 label = "样本量",
+                                                 min = 1,
+                                                 step = 1,
+                                                 value = 100),
     # 修改结束 LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL####
-    tags$div(
-      class = "mt-auto",
-      card(
-        fill = FALSE,
-        class = "w-100",
-        card_header("引用"),
-        card_body(
-          tags$p(
-    # 修改citation TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT####
-            "张庆垚. (2026).", tags$i("统计检验力如何变化"), "."
-    # 修改结束 LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL####
-          )
-        )
-      ),
-    tags$a(
-        class = "btn btn-sm btn-outline-secondary w-100 text-center",
-        href = "https://stat.psych.pub",
-        icon("home"),
-        "返回主页"
-      )
-    )
-  ),
+    tags$div(class = "mt-auto",
+             card(fill = FALSE,
+             class = "w-100",
+             card_header("引用"),
+             card_body(tags$p(
+          # 修改citation TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT####
+                              "张庆垚. (2026).", tags$i("统计检验力如何变化"), ". 单车欲问边. https://stat.psych.pub"
+          # 修改结束 LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL####
+                             ))),
+    tags$div(class = "mt-auto",
+             card(fill = FALSE,
+                  class = "w-100",
+                  card_header("声明"),
+                  card_body(tags$p("本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用",
+                            tags$a(href = "https://stat.psych.pub", "CC BY-NC-ND 4.0"), "协议进行许可。"))),
+    tags$a(class = "btn btn-sm btn-outline-secondary w-100 text-center",
+           href = "https://stat.psych.pub",
+           icon("home"),
+           "返回主页"))),
   
   # 修改Output TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT####
     card(card_header("比较H0与H1抽样分布"),
          plotOutput("H0H1plot"))
   # 修改结束 LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL####
-) # ui结束
+)) # ui结束
 
 # Define server----------------------------------------------------------------
 server <- function(input, output) {

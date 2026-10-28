@@ -10,7 +10,7 @@ library(ggplot2)
 ui <- page_sidebar(
   
 # 修改标题 #####################################################################
-  title = "依恋倾向心理测验",
+  title = "依恋",
 # 修改结束 #####################################################################
     
 # 修改Input ####################################################################
@@ -115,54 +115,46 @@ ui <- page_sidebar(
                         "符合"=6,
                         "非常符合"=7)),
     tags$b("最后一步"),
-    actionButton("update", "点击更新测评报告", icon = icon("refresh"), class = "btn-sm"),
+    actionButton("update", "点击更新演示", icon = icon("refresh"), class = "btn-sm"),
 
 # 修改结束 #####################################################################
-    tags$div(
-      class = "mt-auto",
-      card(
-        fill = FALSE,
-        class = "w-100",
-        card_header("引用"),
-        card_body(
-          tags$p(
-            # 修改citation #################################################################
-            "张礼娟，张庆垚. (2026).", tags$i("依恋倾向心理测验"), "."
-            # 修改结束 #####################################################################
-          ),
-          tags$p(
-            # 修改citation #################################################################
-            "Zhang, Q., Hou, Z. J., Fraley, R. C., Hu, Y., Zhang, X., Zhang, J., & Guo, X. (2022). Validating the Experiences in Close Relationships–Relationship Structures Scale among Chinese Children and Adolescents.", 
-            tags$i("Journal of Personality Assessment, 104"),
-            "(3), 347-358.",
-            # 修改结束 #####################################################################
-          )
-        )
-      ),
-      tags$a(
-        class = "btn btn-sm btn-outline-secondary w-100 text-center",
-        href = "https://stat.psych.pub",
-        icon("home"),
-        "返回主页"
-      )
+    tags$div(class = "mt-auto",
+             card(fill = FALSE,
+             class = "w-100",
+             card_header("引用"),
+             card_body(tags$p(
+                              # 修改citation #################################################################
+                              "张礼娟，张庆垚. (2026).", tags$i("依恋"), ". 单车欲问边. https://stat.psych.pub"
+                              # 修改结束 #####################################################################
+                              ),
+                       tags$p(
+                              # 修改citation #################################################################
+                              "Zhang, Q., Hou, Z. J., Fraley, R. C., Hu, Y., Zhang, X., Zhang, J., & Guo, X. (2022). Validating the Experiences in Close Relationships–Relationship Structures Scale among Chinese Children and Adolescents.", 
+                              tags$i("Journal of Personality Assessment, 104"), "(3), 347-358.",
+                              # 修改结束 #####################################################################
+                              ))),
+      tags$div(class = "mt-auto",
+        card(fill = FALSE,
+          class = "w-100",
+          card_header("声明"),
+          card_body(tags$p("本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用",
+                    tags$a(href = "https://stat.psych.pub", "CC BY-NC-ND 4.0"), "协议进行许可。"))),
+                    tags$a(class = "btn btn-sm btn-outline-secondary w-100 text-center", 
+                           href = "https://stat.psych.pub", 
+                           icon("home"), 
+                           "返回主页")
   )),
 # 修改Output ###################################################################
-    card(card_header("测评报告"), 
-         card_body(
-           layout_sidebar(
-             fillable = TRUE,
-             sidebar = sidebar(
-               bg = "#EEEEEE",
-               position = "right",
-               # "ECR_RS_report"包含html tag，需要用htmlOutput输出。
-               htmlOutput(outputId = "ECR_RS_report")
-             ),
-             plotOutput(outputId = "attachment_plot")
-             )
-           )
-         ),
+    card(card_header("结果"), 
+         card_body(layout_sidebar(fillable = TRUE,
+                                  sidebar = sidebar(bg = "#EEEEEE",
+                                                    position = "right",
+                                                    # "ECR_RS_report"包含html tag，需要用htmlOutput输出。
+                                                    htmlOutput(outputId = "ECR_RS_report")),
+                                  plotOutput(outputId = "attachment_plot"))))
 # 修改结束 #####################################################################
-) # ui结束
+))
+# ui结束
 
 # Define server logic required to draw a histogram ####
 
