@@ -4,14 +4,13 @@ library(bslib)
 
 # 修改package ##################################################################
 library(ggplot2)
-# 修改结束 #####################################################################
+# 修改结束
 
 # Define UI --------------------------------------------------------------------
 ui <- page_sidebar(
-  
 # 修改标题 #####################################################################
                    title = "t分布",
-# 修改结束 #####################################################################
+# 修改结束
   # Sidebar panel for inputs ---------------------------------------------------
                    sidebar = sidebar(bg = "#EEEEEE",
                                      fillable = TRUE,
@@ -27,55 +26,47 @@ ui <- page_sidebar(
                                                   label = "实际t值(H1)",
                                                   value = 2,
                                                   step = 0.01),
-                                  # 修改结束 #####################################################################
-                                     tags$div(class = "mt-auto",
-                                              card(fill = FALSE,
-                                                   class = "w-100",
-                                                   card_header("引用"),
-                                                   card_body(tags$p(
-                                  # 修改citation #################################################################
-                                                                    "张庆垚. (2026).", tags$i("t分布"), ". 单车欲问边. https://stat.psych.pub"
-                                  # 修改结束 #####################################################################
-                                                                   ))),
-                                              card(fill = FALSE,
-                                                   class = "w-100",
-                                                   card_header("声明"),
-                                                   card_body(tags$p("本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用",
-                                                             tags$a(href = "https://stat.psych.pub", "CC BY-NC-ND 4.0"), "协议进行许可。"))),
-                                                             tags$a(class = "btn btn-sm btn-outline-secondary w-100 text-center",
-                                                                    href = "https://stat.psych.pub",
-                                                                    icon("home"),
-                                                                    "返回主页"))),
-                                  # 修改Output ###################################################################
-                                     card(card_header("比较t与z的H0分布"), plotOutput(outputId = "plot")),
-                                     layout_columns(widths = c(6, 6),
-                                                    card(card_header("H0分布中t与z的临界值"), 
-                                                         tableOutput(outputId = "table_xs")),
-                                                    card(card_header("实际t值(H1)的精确p值"), 
-                                                         tableOutput(outputId = "table_ps")))
-# 修改结束 #####################################################################
+# 修改结束
+                                     tags$div(class = "mt-auto text-muted",
+                                              style = "font-size: 14px;",
+                                              tags$strong("引用"),
+                                              tags$p(
+# 修改citation #################################################################
+                                                     "张庆垚. (2026).", tags$i("t分布"), ". 单车欲问边. https://stat.psych.pub"
+# 修改结束
+                                                     ),
+                                              tags$strong("声明"),
+                                              tags$p("本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用",
+                                                      tags$a(href = "https://stat.psych.pub", "CC BY-NC-ND 4.0"), "协议进行许可。"),
+                                              tags$a(class = "btn btn-sm btn-outline-secondary w-100 text-center",
+                                                     href = "https://stat.psych.pub",
+                                                     icon("home"),
+                                                     "返回主页"))),
+# 修改Output ###################################################################
+                   card(card_header("比较t与z的H0分布"), plotOutput(outputId = "plot")),
+                   layout_columns(widths = c(6, 6),
+                                  card(card_header("H0分布中t与z的临界值"), 
+                                       tableOutput(outputId = "table_xs")),
+                                  card(card_header("实际t值(H1)的精确p值"), 
+                                       tableOutput(outputId = "table_ps"))),
+# 修改结束
 ) # ui结束
 
 # Define server logic required to draw a histogram ####
 
 server <- function(input, output) {
-  
 # 修改计算 #####################################################################
   output$plot <- renderPlot({
-    
     # 视野x轴下限与上限
     LS_coord <- range(qt(c(0.0005, 0.9995), df = input$df), input$t)
-    
     # 临界值
     LLz <- qnorm(0.025)
     ULz <- qnorm(0.975)
     LLt <- qt(0.025, df = input$df)
     ULt <- qt(0.975, df = input$df)
-    
     # x
     x <- seq(LS_coord[1], LS_coord[2], 0.001)
     length_x <- length(x)
-    
     # 正态概率密度曲线数据
     datz <- data.frame(
       x = x,
@@ -139,6 +130,6 @@ server <- function(input, output) {
       "p_two_tailed" = c(pt(-abs(input$t), input$df)*2, pnorm(-abs(input$t))*2),
       "p_one_tailed" = c(pt(-abs(input$t), input$df), pnorm(-abs(input$t)))
     ))
-# 修改结束 #####################################################################
+# 修改结束
 }
 shinyApp(ui = ui, server = server)
