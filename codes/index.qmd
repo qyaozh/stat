@@ -2,4 +2,4 @@
 title: "R代码"
 ---
 
-这里呈现了R代码，文档格式为qmd。
+这里展示了我在心理与教育统计方面创作的R代码作品。本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/deed.zh-hans)协议进行许可。
