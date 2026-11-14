@@ -76,7 +76,7 @@ ui <- page_sidebar(
                 ),
               tags$strong("声明"),
               tags$p("本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用",
-                     tags$a(href = "https://stat.psych.pub", "CC BY-NC-ND 4.0"), 
+                     tags$a(href = "https://creativecommons.org/licenses/by-nc-nd/4.0/", "CC BY-NC-ND 4.0"), 
                      "协议进行许可。"),
               tags$a(class = "btn btn-sm btn-outline-secondary w-100 text-center", 
                      href = "https://stat.psych.pub", 
