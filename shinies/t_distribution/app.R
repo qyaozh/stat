@@ -43,7 +43,7 @@ ui <- page_sidebar(
                                                      icon("home"),
                                                      "返回主页"))),
 # 修改Output ###################################################################
-                   card(card_header("比较t与z的H0分布"), plotOutput(outputId = "plot")),
+                   card(full_screen = TRUE, card_header("比较t与z的H0分布"), plotOutput(outputId = "plot")),
                    layout_columns(widths = c(6, 6),
                                   card(card_header("H0分布中t与z的临界值"), 
                                        tableOutput(outputId = "table_xs")),

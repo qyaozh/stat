@@ -55,12 +55,12 @@ ui <- page_sidebar(
 # 修改Output ###################################################################
 layout_column_wrap(
     width = 1/3,
-    card(card_header("分组频数分布图"), card_body(plotOutput(outputId = "freq_plot"))),
-    card(card_header("箱线图"), card_body(plotOutput(outputId = "box_plot"))),
-    card(card_header("累计频数分布图"), card_body(plotOutput(outputId = "cumsum_freq_plot"))),
-    card(card_header("相对频数分布图"), card_body(plotOutput(outputId = "prop_plot"))),
-    card(card_header("概率密度图"), card_body(plotOutput(outputId = "d_plot"))),
-    card(card_header("累计概率分布图"), card_body(plotOutput(outputId = "cumsum_prob_plot")))
+    card(full_screen = TRUE, card_header("分组频数分布图"), card_body(plotOutput(outputId = "freq_plot"))),
+    card(full_screen = TRUE, card_header("箱线图"), card_body(plotOutput(outputId = "box_plot"))),
+    card(full_screen = TRUE, card_header("累计频数分布图"), card_body(plotOutput(outputId = "cumsum_freq_plot"))),
+    card(full_screen = TRUE, card_header("相对频数分布图"), card_body(plotOutput(outputId = "prop_plot"))),
+    card(full_screen = TRUE, card_header("概率密度图"), card_body(plotOutput(outputId = "d_plot"))),
+    card(full_screen = TRUE, card_header("累计概率分布图"), card_body(plotOutput(outputId = "cumsum_prob_plot")))
     )
 # 修改结束 #####################################################################
 ) # ui结束

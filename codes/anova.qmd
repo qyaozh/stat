@@ -15,8 +15,7 @@ format:
   #   code-line-numbers: true
   #   tbl-cap-location: top
   #   link-external-newwindow: true
-draft:
-  true
+draft: false
 ---
 
 ```{r}

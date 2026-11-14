@@ -19,8 +19,7 @@ knitr:
   opts_chunk: 
     collapse: true
     comment: "##" 
-draft:
-  true
+draft: false
 ---
 
 ```{r}

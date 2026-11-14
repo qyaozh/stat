@@ -57,10 +57,10 @@ ui <- page_sidebar(
                     "返回主页"))),
 # 修改Output ###################################################################
 layout_column_wrap(width = 1/3,
-                   card(card_header("正态分布"), card_body(plotOutput(outputId = "norm_plot"))),
-                   card(card_header("卡方分布"), card_body(plotOutput(outputId = "chi_plot"))),
-                   card(card_header("t分布"), card_body(plotOutput(outputId = "t_plot"))),
-                   card(card_header("F分布"), card_body(plotOutput(outputId = "f_plot"))))
+                   card(full_screen = TRUE, card_header("正态分布"), card_body(plotOutput(outputId = "norm_plot"))),
+                   card(full_screen = TRUE, card_header("卡方分布"), card_body(plotOutput(outputId = "chi_plot"))),
+                   card(full_screen = TRUE, card_header("t分布"), card_body(plotOutput(outputId = "t_plot"))),
+                   card(full_screen = TRUE, card_header("F分布"), card_body(plotOutput(outputId = "f_plot"))))
 # 修改结束 #####################################################################
 ) # ui结束
 

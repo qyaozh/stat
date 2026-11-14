@@ -2,6 +2,13 @@
 
 这里是张庆垚“心理与教育统计”的资料，仅供学习交流。
 
+## 代码、Shiny与拓展阅读
+
+通过以下方式获取：
+
+- 访问Github仓库<https://github.com/qyaozh/stat>
+- 访问网站<https://stat.psych.pub>
+
 ## 数据
 
 数据`well`在R程序包`Keng`之中。安装`Keng`后，使用以下R代码调用数据：
@@ -15,10 +22,3 @@ data("well", package = "Keng")
 ```r
 ?well
 ```
-
-## 代码、Shiny与拓展阅读
-
-通过以下方式获取：
-
-- 访问Github仓库<https://github.com/qyaozh/stat>
-- 访问网站<https://www.psych.pub>
