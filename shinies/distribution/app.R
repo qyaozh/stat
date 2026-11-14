@@ -35,7 +35,7 @@ ui <- page_sidebar(
                     textInput(inputId = "color",
                               label = "颜色",
                               value = "#1661AB"),
-                    helpText("颜色的数值可以是RGB值、HEX值、R中657种颜色名称或R调色板中的颜色编号(1-8)。"),
+                    helpText("颜色的数值可以是HEX值(e.g., #1661AB)、R中657种颜色名称(e.g., wheat)或R调色板中的颜色编号(incl., 1-8)。"),
 # 修改结束 #####################################################################
                     tags$div(class = "mt-auto text-muted",
                              style = "font-size:14px;",
@@ -47,7 +47,7 @@ ui <- page_sidebar(
                                    ),
                              tags$strong("声明"),
                              tags$p("本站内容仅用于个人成果展示与学习交流，不提供用户注册、内容发布、数据存储及任何商业服务。本站内容采用",
-                                    tags$a(href = "https://creativecommons.org/licenses/by-nc-nd/4.0/", "CC BY-NC-ND 4.0"), "协议进行许可。"),
+                                    tags$a(href = "https://creativecommons.org/licenses/by/4.0/deed.zh-hans", "CC BY 4.0"), "协议进行许可。"),
                              tags$a(class = "btn btn-sm btn-outline-secondary w-100 text-center", 
                                     href = "https://stat.psych.pub", 
                                     icon("home"),
