@@ -19,6 +19,7 @@ draft: false
 ---
 
 ```{r}
+#| message: false
 library(dplyr)
 library(tidyr)
 library(stringr)
@@ -26,9 +27,7 @@ library(ggplot2)
 library(afex)
 library(emmeans)
 library(effectsize)
-library(Keng)
-data("well")
-data("depress")
+data("well", package = "Keng")
 ```
 
 ## 变量得分通过[比较]{.text-primary}获得意义
@@ -219,7 +218,7 @@ well |>
 方差分析就是对方差的分析。方差分析首先将方差分解为几个部分。在下图中，横坐标为年级，纵坐标flourish1为第1次调查中实现论幸福感的得分。图中圆点表示每个学生的抑郁得分，图中菱形表示相应年级的抑郁的均值（组内均值，group mean），黑色水平直线表示整个样本的均值（grand mean）。
 
 ```{r}
-# factor class
+# factor grade
 well$grade <- factor(well$grade100)
 # grand mean
 M_grand <- mean(well$flourish1)
@@ -291,9 +290,9 @@ MS_{within} &= \frac{SS_{within}}{df_{within}}
 
 ```{r}
 # 组
-dat1 <- well$flourish1[well$grade100 == 1]
-dat2 <- well$flourish1[well$grade100 == 2]
-dat3 <- well$flourish1[well$grade100 == 3]
+dat1 <- well$flourish1[well$grade == "1"]
+dat2 <- well$flourish1[well$grade == "2"]
+dat3 <- well$flourish1[well$grade == "3"]
 
 # 组数
 k <- 3
@@ -367,7 +366,7 @@ df2 &= df_{within}
 
 **实际工作中经常用MS~residual~指代MS~error~与MS~within~。**
 
-以well中三个年级幸福感水平的差异为例，F检验如下
+以well中三个年级幸福感水平的差异为例，F检验如下：
 
 ```{r}
 F <- MS_between/MS_within
@@ -377,98 +376,144 @@ F
 p
 ```
 
-我们可以使用R中的函数`aov()`进行上述方差分析。在进行方差分析之前，首先需要将变量`grade100`转化为类别变量。否则，R会将`grade100`当做连续变量来分析，其统计结果也将是错误的。
+我们可以使用R中的函数`aov()`进行上述方差分析。在进行方差分析之前，首先需要将方差分析的自变量从连续变量转化为类别变量。否则，R会将自变量当做连续变量来分析，其统计结果也将是错误的。后文将用到性别这一被试间变量，此处将连续变量gender100一并转化为类别变量gender。
 
 ```{r}
-well$grade100 <- factor(well$grade100)
-out_aov <- aov(flourish1 ~ grade100, well)
+well$grade <- factor(well$grade100)
+well$gender <- factor(well$gender100)
+```
+
+接下来使用函数`aov()`进行方差分析：
+
+```{r}
+out_aov <- aov(flourish1 ~ grade, well)
 summary(out_aov)
 ```
 
-推荐使用`afex`程序包中的`aov_ez()`或`aov_car()`进行方差分析：
+推荐使用程序包`afex`中的函数`aov_ez()`或`aov_car()`进行方差分析。函数`aov_ez()`使用了程序包`ez`界定变量的方法——使用字符向量来界定变量。在下方代码中，参数`id`界定个案编号，参数`dv`界定结果变量，参数`data`界定数据，参数`between`界定被试间自变量。在本例中，被试间自变量仅有年级，因此，`between = "grade"`。若被试间自变量为年级与性别，那么，`between = c("grade", "gender")`。
 
 ```{r}
 library(afex)
-# aov_ez()直接指定变量
 aov_ez(id = "id",
        dv  = "flourish1",
        data = well,
-       between = "grade100")
+       between = "grade")
+```
 
-# aov_car()使用formula表示变量间关系，
-# ~ 左侧为结果变量，
-# ~ 右侧为自变量，
-# Error()必须包含在formula中，id是数据中表示被试编号的变量。
-out <- aov_car(formula = flourish1 ~ grade100 + Error(id),
-       data = well)
+`aov_car()`使用程序包`car`的方式界定变量：使用公式，即参数`formula`，界定变量间的关系。参数`formula`的值为`flourish1 ~ grade + Error(id)`，`~`左侧为结果变量，`~`右侧为自变量。`Error(id)`界定个案编号。
+
+```{r}
+out <- aov_car(formula = flourish1 ~ grade + Error(id),
+               data = well)
 out
 ```
 
-经比较，函数`aov()`、程序包`afex`方差分析的结果与前文完全一致。
-
-在上述结果中，ges表示效应量generalized eta-squared。我们可以使用`afex`中的`anova()`输出效应量partial eta-squared。
-
-```{r}
-anova(out, es = "pes")
-```
-
-### 方差分析的事后比较
-
-方差分析回答了“三个年级的均值整体上是否有差异”这一问题，假设三个年级整体上差异显著，我们仍不清楚三个年级两两之间的差异情况。当方差分析的F检验表明各组均值整体上[存在]{.text-warning}显著差异之后，我们需要进行事后比较，以了解到底是哪些组之间存在差异。当方差分析的F检验表明各组均值整体上[不存在]{.text-warning}显著差异之后，我们不需要进行事后比较。
-
-由于前文的F检验结果显示三个年级的抑郁水平整体上不存在显著差异，因此，我们不需要进行事后比较。但出于教学演示的目的，下面我们继续对depr1的班级差异进行事后比较。我们使用`emmeans`程序包进行事后比较。事后比较需要进行多次两两比较，这会导致一类误差增大，因此，事后比较需要对p值进行校正。校正的方法有多种("tukey",  "scheffe", "sidak", "bonferroni", "dunnettx", "mvt", "none")，可参考R文档中对`adjust`参数的介绍(在Console中运行`?summary.emmGrid`)。
-
-```{r}
-library(emmeans)
-# 这里specs参数使用formula指定自变量\因素
-emmeans_out <- emmeans(object = out,
-                       specs = ~ grade100)
-pairs(emmeans_out, adjust = "none") # 不进行校正
-pairs(emmeans_out, adjust = "bonferroni")
-pairs(emmeans_out) # "tukey" as default
-```
+经比较可见，函数`aov()`、程序包`afex`方差分析的结果与前文基于公式计算的结果完全一致。函数`aov_car()`输出了一条提示信息：“Contrasts set to contr.sum for the following variables: grade”，该信息的含义将在后文回归分析章节进行讲解。上述结果中的ges表示效应量$\eta_{generalized}^2$（generalized eta-squared）。
 
 ### 方差分析的效应量
 
-方差分析一般使用$\eta^2$或$\eta_{partial}^2$衡量效应量的大小，这两个效应量考研会考。$\eta_{partial}^2$更为常用。$\eta^2$或$\eta_{partial}^2$的公式如下：
+方差分析的效应量有三个指标：$\eta^2$，$\eta_{partial}^2$，$\eta_{generalized}^2$。其公式如下：
 
 \begin{align}
 \eta^2 &= \frac{SS_{effect}}{SS_{total}} \\
-\eta_{partial}^2 &= \frac{SS_{effect}}{SS_{effect} + SS_{error}}
+\eta_{partial}^2 &= \frac{SS_{effect}}{SS_{effect} + SS_{error}} \\
+\eta_{generalized}^2 &= \frac{SS_{effect}}{SS_{effect} + SS_{measured}}
 \end{align}
 
-我们可以使用`effectsize`中的`eta_squared()`计算上述效应量：
+其中，$\eta_{generalized}^2$将SS区分为两类：源自实验操纵的SS，源自测量的SS（包括被试个体差异）。当方差分析为多因素方差分析，$\eta_{generalized}^2$与$\eta_{partial}^2$的差异才能体现出来，后文将对此作进一步演示。本例为单因素方差分析，此时，$\eta_{partial}^2 = \eta_{generalized}^2$。实际工作中$\eta_{partial}^2$最为常用。
+
+`afex`中的函数`anova()`或`nice()`可以计算$\eta^2_{partial}$：
+
+```{r}
+nice(out, es = "pes")
+```
+
+程序包`effectsize`中的函数`eta_squared()`，可以计算上述三种效应量：
 
 ```{r}
 library(effectsize)
 # Eta squared
-eta_squared(out)
+eta_squared(out, partial = FALSE)
 # Eta partial squared
 eta_squared(out, partial = TRUE)
+# Eta partial squared
+eta_squared(out, generalized = TRUE)
 ```
+
+### 方差分析的事后比较
+
+方差分析回答了“三个年级的均值整体上是否有差异”这一问题，假设三个年级整体上差异显著，我们仍不清楚三个年级两两之间是否差异显著。当方差分析表明各组均值整体上[存在]{.text-warning}显著差异之后，我们需要进行事后比较。事后比较通过t检验进行两两之间的比较，以了解到底哪两组之间存在差异。
+
+事后比较需要进行多次t检验，这会导致一类误差增大。在本例中，我们需要进行三次t检验，每一次t检验犯一类错误的概率为0.05，三次t检验累计的一类错误的概率必然大于0.05。为了将累计的一类错误的概率控制在0.05，事后比较需要对t检验的*p*值进行校正。我们使用程序包`emmeans`提供的估计边缘平均数的方法进行事后比较，`emmeans`校正`p`值的方法有多种："tukey",  "scheffe", "sidak", "bonferroni", "dunnettx", "mvt"。其中，"tukey"最为常用，"bonferroni"次之。更多信息请参考R文档中对`adjust`参数的介绍(在Console中运行`?summary.emmGrid`)。
+
+出于教学演示的目的，尽管前文结果显示三个年级的幸福感水平整体上差异不显著，我们仍对flourish1的年级差异进行事后比较。
+
+```{r}
+library(emmeans)
+# 参数specs使用公式指定自变量
+emmeans_out <- emmeans(object = out,
+                       specs = ~ grade)
+# 无校正，p值为t检验的原始p值。
+pairs(emmeans_out, adjust = "none")
+# adjust默认值为"tukey"，p值为校正后的p值
+pairs(emmeans_out) 
+# 校正方法界定为"bonferroni"，p值为校正后的p值
+pairs(emmeans_out, adjust = "bonferroni")
+```
+可见，在采用"tukey"与"bonferroni"校正后，三次比较的p值发生了变化。尽管*p*值发生了变化，但统计结论是一致的：三个年级的幸福感两两之间差异不显著，*p*s > 0.05。
 
 ## 被试间多因素方差分析
 
-前文考察了三个年级的抑郁水平的差异，自变量只有1个分类变量，且该自变量为被试间因素，因此这类方差分析称为单因素被试间方差分析。被试间多因素方差分析指的是自变量有两个及以上分类变量，且自变量都是被试间因素。例如，我们考察：班级、性别两个因素对抑郁的影响。
+前文考察了三个年级的幸福感水平的差异，在这一研究问题中，自变量只有一个分类变量，且该自变量为被试间因素，这类方差分析被称为被试间单因素方差分析。当自变量有两个及以上，方差分析被称为多因素方差分析；若自变量皆为被试间因素，则方差分析被进一步称为被试间多因素方差分析。例如，我们考察年级与性别两个因素对幸福感的影响，此时就需要进行被试间多因素方差分析。
 
-以班级、性别两个因素对抑郁的影响为例，由于自变量有两个，因此，我们可以单独考察班级的效应，即，班级的**主效应**。我们可以单独考察性别的作用，即，性别的主效应。同时，我们也可以考察班级、性别的交互效应。[交互效应并不是班级与性别的相互作用]{.text-warning}。**交互效应指的是：在自变量B的不同水平上，自变量A对结果变量Y的效应是不同的；或者，在自变量A的不同水平上，自变量B对结果变量Y的效应是不同的。**简言之，交互效应是“差异的差异”。
+在多因素方差分析中，我们可以考察单个因素的主效应与多个因素的交互效应。在本例中，我们可以考察年级的主效应（main effect）、性别的主效应，以及年级与性别的交互效应（interaction effect）。简单来说，年级的主效应指的是将不同性别的被试合在一起，仅按照年级将被试分组，继而观察得到的不同年级幸福感均值之间的差异。简言之，主效应指的是均值的差异。“交互效应”这个名字具有误导性，有人将交互效应理解为年级与性别的相互作用，这是错误的。交互效应指的是：在年级的不同水平上，不同性别的幸福感水平的差异不同（说法一）；或者说，在年级的不同水平上，性别对幸福感的效应不同（说法二）；或者说，性别对幸福感的效应随着年级的改变而改变（说法三）。交互效应是对称的，年级与性别的交互效应也可以表述为：在性别的不同水平上，不同年级的幸福感水平的差异不同。其他说法以此类推。简言之，交互效应指的是均值的差异的差异。
 
-什么是效应？均值的差异就是效应。下面我们计算在班级的不同水平上性别的效应，即在[班级的不同水平上]{.text-primary}[不同性别的差异]{.text-danger}。
+下面我们计算不同年级、不同性别的幸福感水平的差异，这有助于我们更加直观地观察和理解主效应与交互效应的含义。
 
 ```{r}
 library(tidyr)
-depress %>% 
-  group_by(class, gender) %>% 
-  summarise(mean_depr1 = mean(depr1)) %>% 
-  pivot_wider(names_from = gender,
-              names_prefix = "gender",
-              values_from = mean_depr1) %>% 
-  mutate(d = gender1 - gender2)
+# 观察年级的主效应
+well %>% 
+  group_by(grade) %>% 
+  summarise(mean_flourish1 = mean(flourish1), .groups = "drop_last") %>% 
+  print(digits = 2)
+```
+上面三个均值之间的差异反映了年级的主效应。
+
+```{r}
+# 观察性别的主效应
+well %>% 
+  group_by(gender) %>% 
+  summarise(mean_flourish1 = mean(flourish1), .groups = "drop_last") %>% 
+  print(digits = 2)
 ```
 
-在上面的表格中，4个d反映了在class的不同水平上性别的效应(差异)。但是，我们可以发现，4个d表现看上去是不同的，这表明班级与性别之间可能存在交互效应。
+上面两个均值之间的差异反映了性别的主效应。
 
-与单因素被试间方差分析相比，被试间多因素方差分析的复杂体现在对交互效应的计算上。多因素方差分析中SS、MS、df之间的关系如下，这是考研的重点。在下面的公式中，F~A~检验了因素A的主效应，F~B~检验了因素B的主效应，F~A\*B~检验了因素A与因素B的交互效应。
+```{r}
+# 观察年级与性别的交互效应
+ms_grade_gender <- well %>% 
+  group_by(grade, gender) %>% 
+  summarise(m = mean(flourish1)) %>% 
+  ungroup()
+
+ms_grade_gender%>% 
+  pivot_wider(names_from = gender,
+              names_prefix = "gender",
+              values_from = m) %>% 
+  mutate(d = gender0 - gender1)
+```
+
+在上面的表格中，d反映了在年级的三个水平上的性别差异，三个d之间的差异反映了在年级的三个水平上的性别差异的差异，即年级与性别的交互效应。表面上，三个d是有差异的，班级与性别之间可能存在交互效应，但这一交互效应是否真实存在，仍有待统计检验。若统计检验表明交互效应不显著，那么，即使均值之间看起来有差异，即使交互作用图中直线的方向与斜率有差异，
+
+```{r}
+ggplot(ms_grade_gender, aes(gender, m, group = grade, color = grade)) +
+  geom_point() +
+  geom_path()
+```
+
+
+与单因素被试间方差分析相比，被试间多因素方差分析的复杂体现在对交互效应的计算上。多因素方差分析中SS、MS、df之间的关系是考研的重点，具体如下：
 
 \begin{align}
 SS_{total} &= SS_A + SS_B + SS_{A*B} + SS_{within} \\
@@ -487,20 +532,20 @@ F_B &= \frac{MS_B}{MS_{within}} \\
 F_{A*B} &= \frac{MS_{A*B}}{MS_{within}}
 \end{align}
 
-SS~A\*B~不易计算，我们可以使用简便算法：
+在上面的公式中，F~A~检验了因素A的主效应，F~B~检验了因素B的主效应，F~A\*B~检验了因素A与因素B的交互效应。SS~A\*B~不易计算，我们可以使用简便算法：
 
 $$
 SS_{A*B} = SS_{total} - SS_A - SS_B - SS_{within}
 $$
 
-当然，现实工作中，R语言可以帮助我们执行繁复的计算任务。下面的代码使用参数formula表达变量间的关系，`formula = depr1 ~ class*gender + Error(id)`，我们假定`class`与`gender`存在交互效应，因此`~`右侧的自变量写为`class*gender`，如此一来，aov_car()将同时检验`class`、`gender`的主效应与交互效应。
+实际工作中，我们用程序包`afex`中的`aov_car()`等函数执行上述繁复的计算任务。`aov_car()`使用参数`formula`设定变量间的关系，`formula`的值为`flourish1 ~ grade*gender + Error(id)`，`~`左侧为结果变量，`~`右侧为自变量。我们假定`grade`与`gender`存在交互效应，因此`~`右侧的自变量写为`grade*gender`，如此一来，`aov_car()`将同时检验`grade`、`gender`的主效应与交互效应。
 
 ```{r}
-out <- aov_car(formula = depr1 ~ class*gender + Error(id), depress)
+out <- aov_car(formula = flourish1 ~ grade*gender + Error(id), well)
 out
 ```
 
-若想获得完整的平方和、均方等信息，使用`$`提取：
+使用`$`提取完整的平方和、均方等信息，：
 
 ```{r}
 out$Anova
@@ -575,6 +620,8 @@ names(data_plot)
 data_plot$means
 head(data_plot$data)
 ```
+
+差异分为量的差异与质的差异，量的差异反映了程度上的差异，质的差异反映了方向上的差异。表面上，一年级与三年级的性别差异具有量的差异，一年级与二年级的性别差异具有质的差异。与此相对应，交互效应有两种表现形式。下面的交互作用图使用点表示不同年级、不同性别的幸福感水平，使用直线表示幸福感的变化趋势。有人认为，若交互效应存在，两条直线应交叉在一起，这种观点是错误的。若交互效应存在，交互效应可能表现为量的差异，即两条直线的方向基本相同，两条直线不交叉，但斜率不同；交互效应也可能表现为质的差异，即两条直线的方向不同，两条直线交叉）。
 
 ## 被试内单因素方差分析
 
